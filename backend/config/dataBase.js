@@ -97,5 +97,3 @@ module.exports = {
     testConnection,
     syncDataBase
 }
-
-
