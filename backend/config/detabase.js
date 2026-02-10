@@ -63,3 +63,39 @@ const testConeection = async () => {
             return false;
     }
 }
+
+//Funcion para sicronizar los modelos con la base de datos
+/* Esta funcion creara las tablas autimaticamente basandose en las tablas
+
+- @param {bolean} force - si es true, elimina y recrea todas las tablas
+
+- @param {bolean} alter - si es true, modifica las tablas existentes para que coinicdan con los modelos 
+*/
+
+const syncDataBase = async (force = false, alter = flase) => {
+    try {
+        // Sincronizar todos los modelos con la base de datos
+        await sequelize.sync({force, alter});
+
+        if (force) {
+            console.log('Base de datos sincronizada (todas las tablas recreadas).');
+        } else if (alter) {
+            console.log('Base de datos sincronizada (tablas alteradas según los modelos).');
+        } else {
+            console.log('Base de datos sincronizada correctamente.');
+        }
+        return true;
+    } catch {
+        console.error("X Error al sicronizar con la base de datos" , error.message);
+        return false;
+    }
+};
+
+// Exportar las insitancia de sequelize y las funciones
+module.exports = {
+    sequelize,
+    testConnection,
+    syncDataBase
+}
+
+
