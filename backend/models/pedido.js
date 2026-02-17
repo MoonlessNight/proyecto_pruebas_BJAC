@@ -93,7 +93,7 @@ const Pedido = sequelize.define("Pedido", {
     // Número de teléfono para el pedido
     telefono: {
         type: DataTypes.STRING(20),
-        allowNull: false,
+        allowNull:false,                                                                                                                                                                                                                                                   
         validate: {
             notEmpty: {
                 msg: "El número de teléfono es obligatorio"
@@ -107,4 +107,204 @@ const Pedido = sequelize.define("Pedido", {
         allowNull: true,
     }, 
 
-});
+    // fecha de pago
+    fechaPago: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    // fecha de envio
+    fechaEnvio: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    // fecha de entrega
+    fechaEntrega: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    // Opciones del modelo
+
+    tablaName: "pedido",
+    timestamps: true,
+    // Indice para mejorar las busquedas
+    indexes: [
+    {
+        fields: ["usuarioID"]
+    },
+    {
+        fields: ["estado"]
+    },
+    {
+        fields: ["createdAt"]
+    }
+
+],
+
+/**
+ * Hooks acciones automaticas
+ */
+
+/**
+ * afterUpdate: se ejecuta después de actualizar un pedido
+ * actualiza las fechas según el estado
+ */
+
+afterUpdate: async(Pedido) => {
+    // Si este estado cambia a pago, se guarda la fecha del pago
+    if (Pedido.changed("estado") && Pedido.estado == "pagado") {
+        Pedido.fechaPago = new Date();
+        await Pedido.save({hooks: false}); // Guardar sin ejecutar más hooks
+    }
+
+    // Si el estado cambio a enviado guarda la fecha del envio
+        if (Pedido.changed("estado") && Pedido.estado == "enviado"){
+            Pedido.fechaEnvio = new Date();
+            await Pedido.save({hooks: false})
+        }
+    
+        // Si el estado cambio a entregado guarda la fecha de entrega
+        if (Pedido.changed("estado") && Pedido.estado == "entregado"){
+            Pedido.fechaEntrega = new Date();
+            await Pedido.save({hooks: false})
+        }
+    },
+
+/**
+ * afterUpdate: se ejecuta después de actualizar un pedido
+ * actualiza las fechas según el estado
+ */
+
+beforeDestroy: async(Pedido) => {
+    // Si este estado cambia a pago, se guarda la fecha del pago
+    if (Pedido.changed("estado") && Pedido.estado == "pagado") {
+        throw new Error("No se puede eliminar pedidos, use el estado cancelado en su lugar")
+    }
+},},
+
+);
+
+/**
+ * METODOS DE INSTANCIAS
+ * 
+ * @param {string} nuevoEstado - nuevo estado del pedido
+ * @returns {number} - subtotal (precio * cantidad)
+ */
+
+Pedido.prototype.cambiarEstado = async function (nuevoEstado) {
+    const estadosValidos = ["pendiente", "pagado", "enviado", "cancelado"];
+
+    if(!estadosValidos.includes(nuevoEstado)) {
+        throw new Error ("Estado invalido.")
+    }
+
+    this.estado = nuevoEstado;
+    return await this.save();
+};
+
+/**
+ * Metodo para verificar si el pedido puede ser cancelado
+ * solo se puede cancelar si el estado esta en pendiente o pagado
+ * 
+ * @returns {boolean} - True si se puede cancelar, false no se puede cancelar
+ */
+
+Pedido.prototype.puedeSerCancelado = function(){
+    return ["pendiente" , "pagado"].includes(this.estado);
+};
+
+/**
+ * Metodo para cancelar pedido
+ * 
+ * @returns {Promise<Pedido>} pedido cancelado
+ */
+Pedido.prototype.cancelarPedido =  async function(){
+    if (!this.puedeSerCancelado()) {
+        throw new Error("Este pedido no puede ser cancelado");
+    }
+
+    // Importar modelos
+    const DetallePedido = require("./detallePedido");
+    const Producto = require("./producto");
+
+    // Obtener  detalles del pedido
+    const detalles = await DetallePedido.findAll ({
+        where: {PedidoId:this.id}
+    });
+
+    // Devolver el stock de cada producto
+    for (const detalle of detalles) {
+        const producto  = await Producto.findByPk(detalle.productoId);
+        if (producto) {
+            await producto.aumentarStock(detalle.cantidad);
+            console.log(`Stock devuelto: ${detalle.cantidad} x ${producto.nombre}`)
+        }
+    }
+
+    // Cambiar estado a cancelado
+    this.estado = "cancelado";
+    return await this.save();
+};
+
+/**
+ * Metodo para obtener detalle del pedido con productos
+ * 
+ * @returns {Promise<Array} - Detalle del pedido
+ */
+Pedido.prototype.obtenerDetalle = async function() {
+    const DetallePedido = require("./detallePedido")
+    const Producto = require("./producto")
+
+    return await DetallePedido.findAll({
+        where: {pedidoId: this.id},
+        include: [
+            {
+                model: Producto,
+                as: "producto"
+            }
+        ]
+    });
+},
+
+/**
+ * Metodo para obtener pedidos por estado
+ * 
+ * @param {string} estado - estado del pedido
+ * @returns {promises<number>} - pedido filtrados
+ */
+
+Pedido.obtenerPorEstado = async function (estado){
+    const Usuario = require ("./usuario");
+    return await this.findAll ({
+        where: {estado},
+        include: [
+            {
+                model: Usuario,
+                as: "usuario",
+                atributes:["id", "nombre" ,"email" ,"email" ,"telefono" ]
+            }
+        ],
+        order: [["createdAt","DESC"]]
+    });
+};
+
+/**
+ * Metodo para obtener historial de pedidos de un usuario
+ * 
+ * @param {number} usuarioId - id del usuario
+ * @returns {Promise<Array>} - pedidos del usuario
+ */
+Pedido.obtenerHistorialDelUsuario = async function (usuarioId) {
+    return await this.findAll ({
+        where: {usuarioId},
+        order:  [["createdAt","DESC"]]
+    })
+};
+
+/**
+ * Expotar Modelo
+ */
+
+module.exports = Pedido;
