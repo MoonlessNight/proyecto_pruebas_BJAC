@@ -292,4 +292,4 @@ producto.prototype.reducirStock = async function (cantidad){
 };
 
 // exportar el modelo de producto
-module.exports = producto;
+module.exports = Producto;
