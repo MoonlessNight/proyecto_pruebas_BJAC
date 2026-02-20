@@ -227,7 +227,7 @@ Pedido.prototype.cancelarPedido =  async function(){
 
     // Importar modelos
     const DetallePedido = require("./detallePedido");
-    const Producto = require("./producto");
+    const Producto = require("./Producto");
 
     // Obtener  detalles del pedido
     const detalles = await DetallePedido.findAll ({
@@ -255,7 +255,7 @@ Pedido.prototype.cancelarPedido =  async function(){
  */
 Pedido.prototype.obtenerDetalle = async function() {
     const DetallePedido = require("./detallePedido")
-    const Producto = require("./producto")
+    const Producto = require("./Producto")
 
     return await DetallePedido.findAll({
         where: {pedidoId: this.id},

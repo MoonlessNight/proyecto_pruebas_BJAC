@@ -9,9 +9,6 @@ const { DataTypes } = require('sequelize');
 
 // Importar instancias de sequelize
 const { sequelize } = require('../config/dataBase');
-const { type } = require('os');
-const { argv } = require('process');
-const { table } = require('console');
 
 /*
 Define el modelo Categoria 
@@ -86,7 +83,7 @@ const Categoria = sequelize.define('Categoria', {
                 
                 // Importar models (aquí para evitar dependencias circulares
                 const Subcategoria = require('./subCategoria');
-                const Producto = require('./producto');
+                const Producto = require('./Producto');
 
                 try {
                     // PASO 1: Desactivar todas las subcategorias de esta categoría
@@ -138,7 +135,7 @@ Categoria.prototype.contarSubcategorias = async function() {
  */
 
 Categoria.prototype.contarProductos = async function() {
-    const Producto = require('./producto');
+    const Producto = require('./Producto');
     return await Producto.count({ where: { categoriaId: this.id } });
 };
 

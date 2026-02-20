@@ -12,9 +12,6 @@ const { DataTypes } = require("sequelize");
 
 // importar instancia de sequelize
 const { sequelize } = require("../config/dataBase");
-const { on } = require("node:cluster");
-const { table, time } = require("node:console");
-const { parse } = require("node:path");
 
 /**
  * definir el modelo de carrito
@@ -128,7 +125,7 @@ precioUnitario:{
          * verifica que esta activado y tenga stock suficiente
          */
         beforeCreate: async (itemCarrito) => {
-            const categoria = require("./categoria");
+            const Producto = require("./Producto");
 
             //Buscar el producto
             const producto = await Producto.findByPk(itemCarrito.productoID);
@@ -153,7 +150,7 @@ precioUnitario:{
         beforeUpdate: async (itemCarrito) => {
             // verificar si se actualiza la cantidad
             if (itemCarrito.changed("cantidad")) {
-                const producto = require("./producto");
+                const Producto = require("./Producto");
                 const producto = await Producto.findByPk(itemCarrito.productoID);
                 if (!producto) {
                     throw new Error("El producto asociado al item del carrito no existe.");
@@ -184,17 +181,17 @@ Carrito.prototype.calcularSubtotal = function() {
  * @return {Promise} - Item actualizado
  */
 Carrito.prototype.actualizarCantidad = async function(nuevaCantidad) {
-    const producto = require("./producto");
+    const Producto = require("./Producto");
+    
+    const producto = await Producto.findByPk(this.productoID);
+
+    if (!producto.hayStock(nuevaCantidad)) {
+        throw new Error(`Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`);
+    }
+
+    this.cantidad = nuevaCantidad;
+    await this.save();
 };
-
-const producto = await Producto.findByPk(this.productoID);
-
-if (!producto.hayStock(nuevaCantidad)) {
-    throw new Error(`Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`);
-};
-
-this.cantidad = nuevaCantidad;
-await this.save();
 
 /**
  * METODO ESTATICOS (DE CLASE)
@@ -209,7 +206,7 @@ await this.save();
  */
 
 Carrito.obtenerCarritoUsuario = async function(usuarioID) {
-    const Producto = require("./producto");
+    const Producto = require("./Producto");
 
     return await Carrito.findAll({
         where: { usuarioID },

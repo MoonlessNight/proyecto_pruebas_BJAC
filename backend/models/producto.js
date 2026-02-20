@@ -54,30 +54,29 @@ const Producto = sequelize.define("Producto", {
             isDecimal: {
                 msg:"el precio debe ser un numero decimal"
             },
-                min:{
-                    args:[0],
-                    msg:"el precio no puede ser negativo"
-                }
+            min:{
+                args:[0],
+                msg:"el precio no puede ser negativo"
+            }
+        }
     },
 
     /**
      * stock del producto cantidad disponible en invertario
      */
-     stock :{
-        type: DataTypes.INTEGER, // hasta 99.99,999.99
+    stock: {
+        type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
         validate:{
             isInt: {
                 msg:"el stock debe ser un numero entero"
             },
-                min:{
-                    args:[0],
-                    msg:"el stock no puede ser negativo"
-                }
-
+            min:{
+                args:[0],
+                msg:"el stock no puede ser negativo"
             }
-        },
+        }
     },
 
 /**
@@ -100,7 +99,7 @@ const Producto = sequelize.define("Producto", {
      * categoria - ID de la categoria a la que pertenece (FOREIGN KEY)
      * Esta es la relacion con la tabla categoria 
      */
-    subcategoriaID:{
+    subCategoriaId:{
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -127,7 +126,7 @@ const Producto = sequelize.define("Producto", {
      * categoria - ID de la categoria a la que pertenece (FOREIGN KEY)
      * Esta es la relacion con la tabla categoria 
      */
-    categoriaID:{
+    categoriaId:{
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -162,11 +161,11 @@ const Producto = sequelize.define("Producto", {
     indexes: [
         {
             //indice para buscar productos por subcategoria
-            fields: ["subcategoriaID"]
+            fields: ["subCategoriaId"]
         },
          {
             //indice para buscar productos por categoria
-            fields: ["categoriaID"]
+            fields: ["categoriaId"]
         },
 
 
@@ -188,36 +187,32 @@ const Producto = sequelize.define("Producto", {
          * beforeCreate-se ejecutan antes de crear una producto
          * valida que la subcategoria y que la categoria este activa
          */
-        beforeCreate: async (producto) => {
+        beforeCreate: async (Producto) => {
             const Categoria = require("./categoria");
             const Subcategoria = require("./subCategoria");
 
               //Buscar categoria padre 
-            const categoria = await  Categoria.findByPk(producto.categoriaID);
+            const categoria = await  Categoria.findByPk(Producto.categoriaID);
             if (!categoria){
                 throw new Error ("la categoria seleccionada no existe");
             }
-            if (!categoria.activo){ throw new Error ("no se puede crear un producto en una categoria inactiva");
-
+            if (!categoria.activo){ 
+                throw new Error ("no se puede crear un producto en una categoria inactiva");
+            }
            
             //Buscar subcategoria padre 
-
-            const subcategoria = await Subcategoria.findByPk(producto.subcategoriaID);
-           
+            const subcategoria = await Subcategoria.findByPk(Producto.subCategoriaId);
            
             if (!subcategoria){
                 throw new Error ("la categoria seleccionada no existe");
             }
 
-
-
-            if (!subcategoria.activo){ throw new Error ("no se puede crear un producto en una subcategoria inactiva");
-
+            if (!subcategoria.activo){ 
+                throw new Error ("no se puede crear un producto en una subcategoria inactiva");
             }
-        }
 
-        //validar que la subcategoria pertenezca a la categoria seleccionada
-            if (subcategoria.categoriaID !== producto.categoriaID){
+            //validar que la subcategoria pertenezca a la categoria seleccionada
+            if (subcategoria.categoriaId !== Producto.categoriaId){
                 throw new Error ("la subcategoria seleccionada no pertenece a la categoria seleccionada");
             }
         },
@@ -225,13 +220,13 @@ const Producto = sequelize.define("Producto", {
          * beforeDestroy: se ejecuta antes de eliminar un producto
          * Elimina la imagen del servidor si existe 
          */
-        beforeDestroy: async (producto) => {
-            if (producto.imagen){
+        beforeDestroy: async (Producto) => {
+            if (Producto.imagen){
                 const{deletefile} = require("../config/multer");
                 //intenta eliminar la imagen del servidor
-                const eliminado= await deletefile(producto.imagen);
+                const eliminado= await deletefile(Producto.imagen);
                 if (eliminado){
-                    console.log(`imagen eliminada : ${producto.imagen} `);
+                    console.log(`imagen eliminada : ${Producto.imagen} `);
                 }
             }
         }  
@@ -245,7 +240,7 @@ const Producto = sequelize.define("Producto", {
  * 
  * @return {string|null} url completa de la imagen del producto
  * */
-producto.prototype.obtenerUrlImagen = function (){
+Producto.prototype.obtenerUrlImagen = function (){
     if (!this.imagen){
         return null;
     }
@@ -259,7 +254,7 @@ producto.prototype.obtenerUrlImagen = function (){
  * @param {number} cantidad - cantidad a verificar
  * @return {boolean} - true si hay stock suficiente false si no
  */
-producto.prototype.haystock = function (cantidad = 4){
+Producto.prototype.haystock = function (cantidad = 1){
     return this.stock >= cantidad;
 };
 
@@ -270,8 +265,7 @@ producto.prototype.haystock = function (cantidad = 4){
  * @param {number} cantidad - cantidad a aumentar
  * @return {promise<producto>} producto actualizado
  */
-producto.prototype.aumentarStock = async function 
-(cantidad){
+Producto.prototype.aumentarStock = async function(cantidad){
     this.stock += cantidad;
     return await this.save();
 }
@@ -282,8 +276,7 @@ producto.prototype.aumentarStock = async function
  * @param { number } cantidad - cantidad a reducir
  * @return {promise<produto>} producto actualizado 
  */
-
-producto.prototype.reducirStock = async function (cantidad){
+Producto.prototype.reducirStock = async function(cantidad){
     if(this.haystock(cantidad)){
         throw new Error("stock insuficientes");
     }

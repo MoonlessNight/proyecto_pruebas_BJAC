@@ -37,7 +37,7 @@ Categoria.hasMany(SubCategoria, {
 
 SubCategoria.belongsTo(Categoria, { 
     foreignKey: 'categoriaId', // Campo que conecta las tablas 
-    as: 'categorisa', // ALias para la relacion
+    as: 'categoria', // ALias para la relacion
     onDelete: 'CASCADE', // Si se elimina una categoria, se elimina subcategoria
     onUpdate: 'CASCADE', // Si se actualiza categoria actualizar subcategorias
 });
@@ -67,14 +67,14 @@ Producto.belongsTo(Categoria, {
  * un producto pertecene a una categoria
  */
 SubCategoria.hasMany(Producto, { 
-    foreignKey: 'subcategoriaId', // Campo que conecta las tablas 
+    foreignKey: 'subCategoriaId', // Campo que conecta las tablas 
     as: 'productos', // ALias para la relacion
     onDelete: 'CASCADE', // Si se elimina una sibcategoria, se elimina producto
     onUpdate: 'CASCADE', // Si se actualiza subcategoria actualizar producto
 });
 
 Producto.belongsTo(SubCategoria, { 
-    foreignKey: 'subcategoriaId', // Campo que conecta las tablas 
+    foreignKey: 'subCategoriaId', // Campo que conecta las tablas 
     as: 'categoria', // ALias para la relacion
     onDelete: 'CASCADE', // Si se elimina una subcategoria, se elimina prodcuto
     onUpdate: 'CASCADE', // Si se actualiza subcategoria actualizar el producto
@@ -199,3 +199,14 @@ Producto.belongsToMany(Pedido, {
  * Funcio para inicializar todas las asociaciones
  * Se llama desde server.js después de cargar los modelos
  */
+module.exports = {
+    Usuario,
+    Categoria,
+    SubCategoria,
+    Producto,
+    Carrito,
+    Pedidod,
+    DetallePedido,
+    initializeAssociations
+};
+

@@ -193,7 +193,7 @@ Usuariio.prototype.toJSON = function() {
 };
 
 // Exportar el modelo 
-module.exports = Categoria;
+module.exports = Usuario;
 
 
 
