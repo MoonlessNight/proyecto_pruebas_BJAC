@@ -35,20 +35,20 @@ const SubCategoria = sequelize.define('SubCategoria', {
         unique: {
             msg: "Ya existe una subcategoria con ese nombre" // Mensaje de error si el nombre no es unico
         },
-            validate: {
-                notEmpty: {
-                    msg: "El nombre de la subcategoria no puede estar vacio"  
-                },
-                len: {
-                    args: [2, 100],
-                    msg: "El nombre de la subcategoria debe tener entre 2 y 100 caracteres" 
-                }
+        validate: {
+            notEmpty: {
+                msg: "El nombre de la subcategoria no puede estar vacio"
+            },
+            len: {
+                args: [2, 100],
+                msg: "El nombre de la subcategoria debe tener entre 2 y 100 caracteres"
             }
-    }, 
-        /*
-        Descripción de la subcategoría
-        */
-        descripcion: {
+        }
+    },
+    /*
+    Descripción de la subcategoría
+    */
+    descripcion: {
         type: DataTypes.TEXT, // Tipo de dato texto largo
         allowNull: true, // Permite valores nulos
     },
@@ -58,8 +58,8 @@ const SubCategoria = sequelize.define('SubCategoria', {
      * Esta es la relación con la tabla categoria
      */
     categoriaId: {
-        type: DataTypes.INTEGER,              
-        allowNull: false,                     
+        type: DataTypes.INTEGER,
+        allowNull: false,
         references: {
             model: 'categorias',              // Nombre de la tabla referenciada
             key: 'id'                         // Columna referenciada
@@ -73,11 +73,11 @@ const SubCategoria = sequelize.define('SubCategoria', {
         }
     },
 
-/**
- * Activo estado de la subcategoría
- * Si es false, los productos de esta subcategoría se ocultan
- */
-     activo: {
+    /**
+     * Activo estado de la subcategoría
+     * Si es false, los productos de esta subcategoría se ocultan
+     */
+    activo: {
         type: DataTypes.BOOLEAN, // Tipo de dato booleano
         allowNull: false, // No permite valores nulos
         defaultValue: true // Valor por defecto es true (activo)
@@ -91,7 +91,7 @@ const SubCategoria = sequelize.define('SubCategoria', {
     indexes: [
         {
             // Indicar para buscar subcategorias por categoria
-            fields: [ 'categoriaId'] 
+            fields: ['categoriaId']
         },
         {
             // Indice compuesto: nombre unico por categoria
@@ -124,22 +124,22 @@ const SubCategoria = sequelize.define('SubCategoria', {
             }
         },
 
-    /**
-     * afterUpdate: se ejecuta despues de actualizar una subcategoría
-     * Si se desactiva una subcategoría, se desactivan todas sus productos
-     */
+        /**
+         * afterUpdate: se ejecuta despues de actualizar una subcategoría
+         * Si se desactiva una subcategoría, se desactivan todas sus productos
+         */
         afterUpdate: async (subcategoria, options) => {
             // Verfica si el campo activo se cambio
             if (subcategoria.changed('activo') && !subcategoria.activo) {
                 console.log(`Desactivando subcategoría: ${subcategoria.nombre}`);
-                
+
                 // Importar models (aquí para evitar dependencias circulares
                 const Producto = require('./Producto');
 
                 try {
                     // Desactivar todas los productos de esta subcategoría
                     const productos = await Producto.findAll({ where: { subCategoriaId: subcategoria.id } });
-                    
+
                     for (const producto of productos) {
                         await producto.update({ activo: false }, { transaction: options.transaction });
                         console.log(`Producto desactivado: ${producto.nombre}`);
@@ -152,10 +152,10 @@ const SubCategoria = sequelize.define('SubCategoria', {
                     throw error; // Re-lanzar el error
                 }
             }
-        // Si se ACTIVA una categoria, NO se activa automáticamente sus subcategorias y productos
-        // El adminitrador debe activar manualmente si lo desea
+            // Si se ACTIVA una categoria, NO se activa automáticamente sus subcategorias y productos
+            // El adminitrador debe activar manualmente si lo desea
         }
-    }   
+    }
 
 });
 /*
@@ -167,7 +167,7 @@ MÉTODO DE INSTANCIAS
  * @param {Promise<number>} - Número de productos
 */
 
-SubCategoria.prototype.contarSubcategorias = async function() {
+SubCategoria.prototype.contarSubcategorias = async function () {
     const Producto = require('./Producto');
     return await Producto.count({ where: { subCategoriaId: this.id } });
 };
@@ -177,13 +177,13 @@ SubCategoria.prototype.contarSubcategorias = async function() {
  * @returns {Promise<Categoria>} - Categoria padre
  */
 
-SubCategoria.prototype.obtenerCategoria = async function() {
+SubCategoria.prototype.obtenerCategoria = async function () {
     const Categoria = require('./categoria');
     return await Categoria.findByPk(this.categoriaId);
 };
 
 // Exportar el modelo 
-module.exports = subCategoria;
+module.exports = SubCategoria;
 
 
 
