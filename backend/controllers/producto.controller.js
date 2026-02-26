@@ -326,52 +326,100 @@ const actualizarProducto = async (req, res) => {
             });
         }
 
-        // =============================== Validación 1 — Si se cambia el nombre verificar no existe ===============================
-        if (nombre && nombre !== producto.nombre) {
-            const productoConMismoNombre = await Producto.findOne({ where: { nombre } });
+        // =============================== Validación 1 — Verificar categoria ===============================
+        if (categoriaId && categoriaId !== producto.categoriaId) {
+            const categoria = await Producto.findByPk(categoriaId);
 
-            if (productoConMismoNombre) {
+            if (!categoria || !categoria.activo) {
                 return res.status(400).json({
                     success: false,
-                    message: `Ya existe una subcategoria con el mismo nombre "$(nombre)"`,
+                    message: 'Categoria incalida o inactiva',
                 })
             }
-
-            // =============================== Actualizar campos ===============================
-            if (nombre !== undefined) producto.nombre = nombre;
-            if (descripcion !== undefined) producto.descripcion = descripcion;
-            if (activo !== undefined) producto.activo = activo;
-            if (categoriaId !== undefined) producto.categoriaId = categoriaId;
-            if (subCategoriaId !== undefined) producto.subCategoriaId = subCategoriaId;
-            if (stock !== undefined) producto.stock = stock;
-            if (precio !== undefined) producto.precio = precio;
-            if (imagen !== undefined) producto.imagen = imagen;
-            if (!producto.activo) {
-                return res.status(400).sjon({
-                    success: false,
-                    message: 'El Producto no esta activo'
-                })
-            }
-
-            // =============================== Guardar cambios ===============================
-            await producto.save();
-
-            // =============================== Respuesta exitosa =============================== 
-            res.json({
-                success: true,
-                message: 'Producto actualizado exitosamente',
-                data: {
-                    producto
-                }
-            });
         }
+
+        // =============================== Validación 2 — Verificar subcategoria ===============================
+        if (subCategoriaId && subCategoriaId !== producto.subCategoriaId) {
+            const subCategoria = await Producto.findByPk(categoriaId);
+
+            if (!subCategoria || !subCategoria.activo) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Categoria incalida o inactiva',
+                })
+            }
+        }
+        const catId = categoriaId || producto.categoriaId
+
+        // =============================== Validación 3 — Verificar subcategoria ===============================
+        if (!subCategoria.categoriaId !== parseInt(catId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La subcategoria no pertenece a la categoria seleccionada.',
+            })
+        }
+
+        // =============================== Validación 4 — Verificar stock ===============================
+        if (stock !== undefined && parseInt(stock) < 0) {
+            return res.status(400).json({
+                success: false,
+                message: `El producto "${nombre}" debe ser mayor a 0 unidades.`,
+            })
+        }
+
+        // =============================== Validación 5 — Verificar precio ===============================
+        if (precio !== undefined && parseFloat(precio) < 0) {
+            return res.status(400).json({
+                success: false,
+                message: `El producto "${nombre}" debe tener un precio mayor a 0.`,
+            })
+        }
+
+        // =============================== Manejar Imagen ===============================
+        const nombreImagen = req.file.filename;
+        if (imagen !== undefined) {
+            const rutaImagenAnterior = path.join(__dirname, '../uploads', producto.imagen);
+            try {
+                await fs.unlink(rutaImagenAnterior);
+            } catch (error) {
+                console.error('Error al eliminar la imagen subida: ', error)
+            }
+            producto.imagen = nombreImagen;
+        }
+        // =============================== Actualizar campos ===============================
+        if (nombre !== undefined) producto.nombre = nombre;
+        if (descripcion !== undefined) producto.descripcion = descripcion;
+        if (activo !== undefined) producto.activo = activo;
+        if (categoriaId !== undefined) producto.categoriaId = categoriaId;
+        if (subCategoriaId !== undefined) producto.subCategoriaId = subCategoriaId;
+        if (stock !== undefined) producto.stock = parseInt(stock);
+        if (precio !== undefined) producto.precio = parseFloat(precio);
+
+        if (!producto.activo) {
+            return res.status(400).sjon({
+                success: false,
+                message: 'El Producto no esta activo'
+            })
+        }
+
+        // =============================== Guardar cambios ===============================
+        await producto.save();
+
+        // =============================== Respuesta exitosa =============================== 
+        res.json({
+            success: true,
+            message: 'Producto actualizado exitosamente',
+            data: {
+                producto
+            }
+        });
     } catch (error) {
-        console.log('Error en actuaizarSubCategoria: ', error);
+        console.log('Error en actualizarProducto: ', error);
 
         if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({
                 success: false,
-                message: 'Error de valiación',
+                message: 'Error de validación.',
                 errors: error.errors.map(e => e.message)
             });
         }
@@ -383,12 +431,13 @@ const actualizarProducto = async (req, res) => {
         })
     }
 };
+
 /**
  * ACTIVAR Y/O DESACTIVAR PRODUCTO
  * ====================================================================
  * PATCH / api / admin / productos / :id / estado
  * 
- * Al desativar un producto se desactiva todos los productos relacionados
+ * Se desactiva el producto
  * 
  * @param {Object} req - request express
  * @param {Object} res - responde express
@@ -414,9 +463,6 @@ const toggleProducto = async (req, res) => {
         // =============================== Guardar cambios ===============================
         await producto.save();
 
-        // =============================== Contar cuantos registros se afectaron ===============================
-        const productosAfectados = await Producto.count({ where: { categoriaId: id } })
-
         // =============================== Respuesta exitosa ===============================
         res.json({
             success: true,
@@ -428,6 +474,15 @@ const toggleProducto = async (req, res) => {
 
     } catch (error) {
         console.error('Error en toggleProducto: ', error);
+
+        if (req.file) {
+            const rutaImagen = path.join(__dirname, '../uploads', producto.imagen);
+            try {
+                await fs.unlink(rutaImagen);
+            } catch (err) {
+                console.error('Error al eliminar la imagen subida: ', err)
+            }
+        }
         res.status(500).json({
             success: false,
             message: 'Error al actualizar estado de producto',
@@ -454,18 +509,6 @@ const eliminarProducto = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Producto no encontrado"
-            })
-        }
-
-        // =============================== Validación 1 — Verificar que no tenga productos ===============================
-        const productos = await Producto.count({
-            where: { productoId: id }
-        });
-
-        if (productos > 0) {
-            return res.status(400).json({
-                success: false,
-                message: `No se puede eliminar el producto porque tiene ${productos} productos asociadas. Usa PATCH /api/admin/productos/:id para desactivar en lugar de eliminar.`
             })
         }
 
