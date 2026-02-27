@@ -532,92 +532,90 @@ const eliminarProducto = async (req, res) => {
 };
 
 /**
- * OBTENER LAS ESTADISTICAS DE LOS PRODUCTOS
- * ====================================================================
- * GET /api/admin/producto/:id/estadisticas
- * Retorna
- * Total de productos activos/ inactivos calor total del inventario
- * Stack total
- * 
- * @param {Object} req - Request Express
- * @param {Object} res - Response Express
- * 
+ * ACTUALIZAR STOCK
+ * ==============================================================
+ * PATH /api/admin/productos/:id/stock
+ * body: {cantidad, operación: 'aumentar' | 'reducir' | 'establecer'}
+ * @param {Object} req Request Express
+ * @param {Object} res Respondese Express
  */
-const getEstadisticasProducto = async (req, res) => {
+const actualizarStock = async (req, res) => {
     try {
         const { id } = req.params;
-        // =============================== Verficar que el producto exista ===============================
-        const producto = await Producto.findByPk(id, [{
-            include: [{
-                model: Categoria,
-                as: 'categoria',
-                attributes: ['id', 'nombre']
-            }]
-        }]);
-        if (!producto) {
-            return res.status(404).json({
+        const { cantidad, operacion } = req.body;
+        if (!cantidada || !operacion) {
+            return res.status(400).json({
                 success: false,
-                message: "Producto no encontrado."
+                message: 'Se requiere cantidad y operación.'
+            });
+        }
+
+        const cantidadNUm = parseInt(cantidad);
+        if (cantidadNUm < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'La cantidad debe ser mayor a  0.'
             })
-        };
+        }
 
-        // =============================== Contar productos ===============================
-        const totalProductos = await Producto.count({
-            where: { id: id }
-        });
-        const productosActivos = await Producto.count({
-            where: { id: id, activo: true }
-        });
+        const producto = await Producto.findByPk8(id);
+        if (!producto) {
+            return res.status(400).json({
+                success: false,
+                message: 'La producto no encontrado.'
+            })
+        }
 
-        // =============================== Obtener productos para calcular estadisticas ===============================
-        const productos = await Producto.findAll({
-            where: { id: id },
-            attributes: ['precio', 'stock']
-        });
+        let nuevoStock;
 
-        // =============================== Calcular estadisticas de inventario ===============================
-        let valorTotalInventario = 0;
-        let stockTotal = 0;
+        switch (operacion) {
+            case 'aumentar':
+                nuevoStock = producto.aumentarStock(cantidadNUm);
+                break;
+            case 'reducir':
+                if (cantidadNUm > producto.stock) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `No hay stock suficiente. El stock actualmente es: ${producto.stock}`
+                    });
+                }
+                nuevoStock = producto, reducirStock(cantidadNUm);
+                break;
+            case 'establecer':
+                nuevoStock = cantidadNUm;
+                break;
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: 'Operación invalida. Usa aumentar, reducir o establecer.'
+                })
+        }
 
-        productos.forEach(producto => {
-            valorTotalInventario += parseFloat(producto.precio) * producto.stock;
-        });
+        producto.stock = nuevoStock;
+        await producto.save();
 
-        // =============================== Respuesta exitosa ===============================
         res.json({
             success: true,
+            message: `Stock ${operacion === 'aumentar' ? 'reducir' : operacion === 'reducir' ? 'aumentar' : 'establecido'} correctamente`,
             data: {
                 producto: {
                     id: producto.id,
                     nombre: producto.nombre,
-                    activo: producto.activo,
-                    categoria: producto.categoria
-                },
-                estadisticas: {
-                    productos: {
-                        total: totalProductos,
-                        activos: productosActivos,
-                        inactivos: totalProductos - productosActivos,
-                        stock: stockTotal,
-                        valorInventario: valorTotalInventario,
-                    },
-                    inventario: {
-                        valorTotal: valorTotalInventario.toFixed(2), //quitar decimales,
-                        stockTotal,
-                    }
+                    stockAnterio: operacion === 'establecer' ? null : (operacion === 'aumentar' ? producto.stock - cantidadNUm : producto.stock + cantidadNUm),
+                    stickNuevo: producto.stock
                 }
             }
-        });
-
+        })
     } catch (error) {
-        console.error('Error en getEstadisticasProducto: ', error);
+        console.error('Error en actualizarStock', error);
         res.status(500).json({
             success: false,
-            message: 'Error al obtener estadisticas de producto',
+            message: 'Error al actualizar stock.',
             error: error.message
         })
     }
-};
+}
+
 export default {
     obtenerProductos,
     obtenerProductosById,
@@ -625,5 +623,6 @@ export default {
     actualizarProducto,
     toggleProducto,
     eliminarProducto,
-    getEstadisticasProducto
+    actualizarStock,
+
 };
