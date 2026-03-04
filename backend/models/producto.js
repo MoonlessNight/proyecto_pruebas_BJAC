@@ -1,89 +1,82 @@
 /**
  * MODELO PRODUCTO
+ * =====================================================
  * Define la tabla producto en la base de datos
  * almacena los productos 
  */
 
 
-// importar DataTypes de sequelize
+// ========================================= IMPORTAR LOS DATATYPES DE SEQUELIZE==================================== 
 const { DataTypes } = require("sequelize");
 
-// importar instancia de sequelize
+// ================================================ IMPORTAR INSTANCIAS DE SEQUELIZE
 const { sequelize } = require("../config/dataBase");
 
-
 /**
- * definir el modelo de producto
+ * DEFINIR EL MODELO DEL PRODUCTO
+ * =====================================================
  */
 const Producto = sequelize.define("Producto", {
-    // Campos de la tabla 
-    // id identificador unico (PRIMARY KEY)
+    // ============================= CAMPOS DE LA TABLA ======================== 
+    // ========================================= IDENTIFICADOR ÚNICO (PRIMARY KEY) =============================
     id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-        allowNull: false
+        type: DataTypes.INTEGER, // Tipo de dato entero
+        primaryKey: true, // Llave primaria
+        autoIncrement: true, //Auto incrementación 
+        allowNull: false // No permitir valores nulos
     },
-      nombre:{
-        type: DataTypes.STRING(200),
-        allowNull: false,
-            validate:{
-                notEmpty : {
-                    msg:"el nombre del producto no puede estar vacio"
-                },
-                len : {
-                    args:[3,200],
-                    msg:"el nombre del producto debe tener entre 3 y 200 caracteres"
-                },
-            }
-    },
-     /**
-    /**
-     * Descripcion detallada del poducto
-     */
+    
+    // ========================================= NOMBRE DEL PRODUCTO  =============================
+    nombre:{
+    type: DataTypes.STRING(200), // Tipo de dato alfanúmerico
+    allowNull: false, // No permitir valores nulos
+        validate:{
+
+            // Validar que sea del mismo tipo
+            notEmpty : { 
+                msg:"El nombre del producto no puede estar vacio."
+            },
+
+            // Validar que cumpla el límite de caracteres
+            len : {
+                args:[3,200], // Argumento usado para la validacción
+                msg:"El nombre del producto debe tener entre 3 a 200 caracteres."
+            },}},
+
+    // ================================= DESCRIPCION DETALLADO DEL PRODUCTO =============================
     descripcion:{
         type: DataTypes.TEXT,
         allowNull: true,
     },
 
-    //precio del producto
+    // ================================= PRECIO DEL PRODUCTO  =============================
     precio:{
-        type: DataTypes.DECIMAL(10,2), // hasta 99.99,999.99
+        type: DataTypes.DECIMAL(10,2), // Hasta 99.99,999.99
         allowNull: false,
         validate:{
             isDecimal: {
-                msg:"el precio debe ser un numero decimal"
+                msg:"El precio debe ser un numero decimal."
             },
             min:{
                 args:[0],
-                msg:"el precio no puede ser negativo"
-            }
-        }
-    },
+                msg:"El precio no puede ser negativo."
+            }}},
 
-    /**
-     * stock del producto cantidad disponible en invertario
-     */
+    // ================================= STOCK DEL PROUCTO —  CANTIADAD DISPONIBLE EN EL INVENTARIO ==========================
     stock: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
         validate:{
             isInt: {
-                msg:"el stock debe ser un numero entero"
+                msg:"El stock debe ser un numero entero."
             },
             min:{
                 args:[0],
-                msg:"el stock no puede ser negativo"
-            }
-        }
-    },
+                msg:"El stock no puede ser negativo."
+            }}},
 
-/**
- * Imagene nombre del archivo de imagen
- * se guarda solo el nombre ejmplo: coca-cola-producto.jpg
- * laruta seria uploads/coca -cola-producto.jpg
- */
+    // ================================= IMAGEN DEL PRODUCTO — EJ DE GUARDADO: coca-cola-producto.jpg — RUTA: uploads/ ==========================
     imagen:{
         type: DataTypes.STRING(255),
         allowNull: true,// la imgaen puede ser opcional 
@@ -95,15 +88,12 @@ const Producto = sequelize.define("Producto", {
         }
     },
 
-        /**
-     * categoria - ID de la categoria a la que pertenece (FOREIGN KEY)
-     * Esta es la relacion con la tabla categoria 
-     */
+    // ================================= SUBCATEGORIA DEL PRODUCTO (FOREIGN KEY) — ESTA ES LA RELACIÓN CON LA TABLA SUBCATEGORIA ==========================
     subCategoriaId:{
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: "subcategorias", // nombre de la tabla subcategoria
+            model: "subCategorias", // Nombre  de la tabla subcategoria
             key: "id"
         },
 
@@ -122,10 +112,8 @@ const Producto = sequelize.define("Producto", {
         }   
     }
 }, {
-    /**
-     * categoria - ID de la categoria a la que pertenece (FOREIGN KEY)
-     * Esta es la relacion con la tabla categoria 
-     */
+
+    // ================================= CATEGORIA  DEL PRODUCTO (FOREIGN KEY) — ESTA ES LA RELACIÓN CON LA TABLA CATEGORIA ==========================
     categoriaId:{
         type: DataTypes.INTEGER,
         allowNull: false,

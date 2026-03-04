@@ -9,7 +9,7 @@
  */
 const Categoria = require('../models/categoria');
 const SubCategoria = require('../models/subCategoria');
-const Producto = require('../models/Producto');
+const Producto = require('../models/producto');
 
 /**
  * Obtener todas las categorias

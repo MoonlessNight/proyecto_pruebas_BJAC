@@ -10,7 +10,7 @@
  * ====================================================================*/
 import Categoria from '../models/categoria.js';
 import SubCategoria from '../models/subCategoria.js';
-import Producto from '../models/Producto.js';
+import Producto from '../models/producto.js';
 
 /**
  *  OBTENER TODAS LAS SUBCATEGORIAS 

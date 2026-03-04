@@ -1,6 +1,6 @@
 /**
  * CONTROLADOR DE PEDIDOS
- * =================================================================
+ * =============================================================                                                                                                                                                                                                                                                                                ====
  * Gestión de pedidos
  * Requiere autenticación
  */
@@ -8,9 +8,11 @@
 // IMPORTAR MODELOS
 const Pedidos = require('../models/pedido');
 const DetallePedido = require('../models/detallePedido');
-const Producto = require('../models/Producto');
+const Producto = require('../models/producto');
 const Carrito = require('../models/carrito');
 const Usuario = require('../models/usuario');
+const Pedido = require('../models/pedido');
+const { group } = require('node:console');
 
 /**
  * CREAR PEDIDO DESDE EL CARRITO (CHECKOUT)
@@ -182,7 +184,7 @@ const obtenerPedidos = async (req, res) => {
         if (estado) where.estado = estado;
 
         // Paginacion
-        const offset = (parseInt(pagina) - 1) * parseInt(limite);
+        const offset = (parseInt(pagina) - 1) * parseInt(limite)
 
         // Calcular pedidos
         const { count, rows: pedidos } = await Pedidos.findAndCountAll({
@@ -377,4 +379,192 @@ const cancelarPedido = async (req, res) => {
             error: error.message
         });
     }
+}
+
+/**
+ * ADMIN: OBTENER TODOS LOS PEDIDOS
+ * ========================================================
+ * GET /api/admin/pedidos
+ * Query: ?estado=pediente&usuarioId=1&pagina=1&limite=20
+ * 
+ * @param {Object} req - Reqess de Express
+ * @param {Object} res -  
+ */
+const obtenerTodosPedidos = async (req, res) => {
+    try {
+        const {estado, usuarioId, pagina = 1, limite = 20} = req.query;
+
+        // Filtros
+        const where = {};
+        if (estado) where.estado = estado;
+        if (usuarioId) where.usuarioId = usuarioId;
+
+        // Paginación
+        const offset = (parseInt(pagina) - 1) * parseInt(limite);
+
+        // Consultar pedidos
+        const {count, rows: pedidos} = await Pedido.findAndCountAll({
+            where,
+            include: [{
+                model: Usuario,
+                as: 'usuario',
+                attributes: ['id', 'nombre', 'email']
+            
+        },
+        {
+            model: DetallePedido,
+            as: 'detallesPedido',
+            include: [
+                {
+                    model: Producto,
+                    as: 'producto',
+                    attributes: ['id', 'nombre', 'imagen']
+                }
+            ]}]});
+    // Respuesta completa
+    res.json({
+        success: true,
+        message: 'Pedidos obtenidos exitosamente',
+        data: {
+            pedidos,
+        }
+    })
+    
+    } catch (error) {
+        console.error('Error al obtenerTodosPedidos:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener todos los pedidos.',
+            error: error.message
+        })
+    }};
+
+/**
+ * ADMIN ACTUALIZAR ESTADO DEL PEDIDOD
+ * ==========================================
+ * PUT /api/admin/pedidos/:id/estado 
+ * body: {estad: 'pediente'|'envieado'| 'cancelado' | 'entregado'}
+ */
+const actualizarEstadoPedido = async (req, res) => {
+    try{
+        const {id} = req.params;
+        const {estado} = req.body;
+        
+        // Validar estado
+        const estadosValidos = ['pendiente', 'enviado', 'cancelado', 'entregado'];
+        if (!estadosValid.includes(estado)){
+            return res.status(400).json({
+                success: false,
+                message: `El estado del pedido de ser estos ${estadosValidos.join(', ')}`
+            });}
+        
+        // Buscar pedido
+        const pedido = await Pedido.findByPk(id);
+        if (!pedido){
+            return res.status(400).json({
+                success: false,
+                message: 'Pedido no encontrado'
+            });
+        }
+
+        // Actualizar estado                                                                                                            
+        pedido.estado = estado;
+        await pedido.save();
+
+        await pedido.reload({
+            include: [{
+                model: Usuario,
+                as: 'usuario',
+                attributes: ['id', 'nombre', 'imagen']
+            }]})  
+
+        // Respuesta exitosa
+        res.json({
+            success: true,
+            message: 'Estado del pedido actualizado exitosamente'
+        });
+
+        } catch (error) {
+            console.error('Error al actualizar el estado del pedido:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al actualizar el estado del pedido',
+                error: error.message
+            });
+
+}};
+
+/**
+ * ADMIN: OBTENER LAS ESTADISTICAS DEL PEDIDO
+ * ====================================================
+ * GET /api/admin/pedidos/estadisticas
+ */
+const obtenerEstadisticasPedidos = async (req, res) => {
+    try {
+        const {op, fn, col} = require('sequelize');
+
+        // Total del pedido
+        const totalPedido = await Pedido.sum('total');
+
+        // Pedidos por estado
+        const pedidosPorEstado = await Pedido.count({
+            attributes: [
+                'estado',
+                [fn('COUNT', col('id'), 'cantidad')],
+                [fn('SUM', col('total'), 'totalVentas')],
+            ],
+            group: ['estado']
+        });
+
+        // Total de ventas
+        const totalVentas = await Pedido.sum('total');
+
+        // Pedidos hoy
+        const hoy = new DataTransfer();
+        hoy.setData(0,0,0,0);
+        const pedidosHoy = await Pedido.count({
+            where: {
+                createdAt: {
+                    [op.gte]: hoy,
+                    [op.lt]: new Date()
+                }
+            }
+        });
+
+
+    
+        // Respuesta exitosa
+        res.json({
+            success: true,
+            message: 'Obtener las estadisticas del producto exitosamente.',
+            data: {
+                totalPedido,
+                pedidosHoy,
+                totalVentas: parseFloat(totalVentas || 0).toFixed(2),
+                pedidosPorEstado: pedidosPorEstado.map(pedido => ({
+                    estado: pedido.estado,
+                    cantidad: parseInt(pedido.getDataValue('cantidad')),
+                    totalVentas: parseFloat(pedido.getDataValue('totalVentas') || 0).toFixed(2)}))
+            }
+        });
+
+    } catch (error) {
+            console.error('Error al obtenerEstadisticasPedidos:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al obtener las estadisticas del producto.',
+                error: error.message
+            });
+    }};
+
+// =========================================== Exportar ========================================
+module.exports =  {
+    crearPedido,
+    obtenerPedidos,
+    obtenerPedidoPorId,
+    cancelarPedido,
+    obtenerTodosPedidos,
+    actualizarEstadoPedido,
+    obtenerEstadisticasPedidos
+
 }

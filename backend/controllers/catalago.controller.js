@@ -1,8 +1,7 @@
 /**
- *  CONTROLADORES DE PRODUCTO
+ *  CONTROLADORES DE CATALOGO
  * ====================================================================
- * Maneja las operaciones CRUD y acvtivar y desactivar producto
- * Solo accesible por administradores
+ * Permite ver los producos sin iniciar sesión
  */
 
 /**
@@ -12,35 +11,65 @@ import SubCategoria from '../models/subCategoria.js';
 import Categoria from '../models/categoria.js';
 import Producto from '../models/producto.js';
 
-/**
- *  IMPORTAR PATH Y FS PARA MANEJAR ARCHIVOS
- * ====================================================================*/
-const path = require('path');
-const fs = require('fs');
 
 /**
- *  OBTENER TODOS LOS PRODUCTOS 
+ *  OBTENER TODOS LOS PRODUCTOS AL PUBLICO
  * ====================================================================
- * Query params:
+ * GET /api/catalago/producos
  * 
- * - Activo true/false (filtrar por estado)
- * - incluirCategoria true/false (incluir categoria relacionada)
- * - categoriaId (filtrar por categoria)
- * - subCategoriaId (filtrar por subcategoria)
- * - incluirSubCategorias true/false (incluir subcategoria relacionada) 
- * - incluirCategorias true/false (incluir categoria relacionada)   
- * - conStock true/false (filtrar por stock)
- * - buscar (filtrar por nombre o descripcion)
- * - pagina (paginacion)
- * - limite (paginacion)
+ * QUERY PARAMS:
+ * categoriaId: id de la categoria para filtrar por categoria
+ * subCategoriaId: id de la categoria para filtrar por subcategoria
+ * precioMin, precioMax => Filstros por rango de precio
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
+ * Solo muestra los productos activos y con stock disponible
  *  */
 const obtenerProductos = async (req, res) => {
     try {
-        const { categoriaId, subCategoriaId, activo, incluirSubCategorias, incluirCategorias, conStock, buscar, pagina = 1, limite = 100 } = req.query;
+        const { categoriaId, subCategoriaId, activo, precioMax, precioMin, buscar,pagina = 1, limite = 12 } = req.query;
+        const {Op} = require('sequelize');                                      
 
+        // Filtros base solo para productos activos y con stock
+        const where = {
+            activo: true,
+            stock: { [Op.gte]: 0 }
+        };
+
+        // Filtros opcionales
+        if (categoriaId) where.categoriaId = categoriaId;
+        if (subCategoriaId) where.subCategoriaId = categoriaId;
+
+        // Busqueda por texto           
+        if (buscar) {
+            where[Op.or] = [
+                {nombre: { [Op.iLike]: `%${buscar}%` }},
+                {descripcion: { [Op.iLike]: `%${buscar}%` }}
+            ]
+        }
+
+        // Filtros por rango de precio
+        if (precioMin && precioMax){
+            where.precio = {};
+            if (precioMin) where.precio[Op.gte] = parseFloat(precioMin);
+            if (precioMax) where.precio[Op.lte] = parseFloat(precioMax);
+        };
+
+        // Ordenamiento 
+        let orden;
+        switch (orden) {
+            case 'precio_asc':
+                orden = [['precio', 'ASC']];
+                break;
+            case 'precio_desc':
+                orden = [['precio', 'DESC']];
+                break;
+            case 'reciente':
+                orden = [['createdAt', 'DESC']];
+                break;
+            
+        }
         // =============================== Opciones de consulta ===============================
         const opciones = {
             where,
@@ -63,7 +92,6 @@ const obtenerProductos = async (req, res) => {
         const { count, rows: productos } = await Producto.findAndCountAll(opciones);
 
         // =============================== Filtros ===============================
-        const where = {};
         if (categoriaId) where.categoriaId = categoriaId;
         if (subCategoriaId) where.subCategoriaId = subCategoriaId;
         if (activo !== undefined) where.activo = activo === 'true';

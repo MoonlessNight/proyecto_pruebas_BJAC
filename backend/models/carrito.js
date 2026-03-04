@@ -125,7 +125,7 @@ precioUnitario:{
          * verifica que esta activado y tenga stock suficiente
          */
         beforeCreate: async (itemCarrito) => {
-            const Producto = require("./Producto");
+            const Producto = require("./producto");
 
             //Buscar el producto
             const producto = await Producto.findByPk(itemCarrito.productoID);
@@ -150,7 +150,7 @@ precioUnitario:{
         beforeUpdate: async (itemCarrito) => {
             // verificar si se actualiza la cantidad
             if (itemCarrito.changed("cantidad")) {
-                const Producto = require("./Producto");
+                const Producto = require("./producto");
                 const producto = await Producto.findByPk(itemCarrito.productoID);
                 if (!producto) {
                     throw new Error("El producto asociado al item del carrito no existe.");
@@ -181,7 +181,7 @@ Carrito.prototype.calcularSubtotal = function() {
  * @return {Promise} - Item actualizado
  */
 Carrito.prototype.actualizarCantidad = async function(nuevaCantidad) {
-    const Producto = require("./Producto");
+    const Producto = require("./producto");
     
     const producto = await Producto.findByPk(this.productoID);
 
@@ -206,7 +206,7 @@ Carrito.prototype.actualizarCantidad = async function(nuevaCantidad) {
  */
 
 Carrito.obtenerCarritoUsuario = async function(usuarioID) {
-    const Producto = require("./Producto");
+    const Producto = require("./producto");
 
     return await Carrito.findAll({
         where: { usuarioID },
