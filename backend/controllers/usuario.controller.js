@@ -8,6 +8,7 @@
 /**
  *  IMPORTAR MODELOS
  * ====================================================================*/
+import { error } from 'node:console';
 import Usuario from '../models/usuario.js';
 
 /**
@@ -260,3 +261,143 @@ const actualizarUsuario = async (req, res) => {
     }
 };
 
+/**
+ * ALTERNAR USUARIO
+ * =====================================
+ * PATCH /api/admin/usuarios
+ * 
+ * @param {Object} req
+ * @param {Object} res
+ */
+const alternarUsuario = async (req, res) => {
+    try { 
+        const {id} = req.params;
+        
+        // Buscar usuario
+        const usuario = await Usuario.findByPk(id);
+
+        if (!usuario){
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        
+        if (usuario.id === req.usuario.id) {
+            return res.status(400).json({
+                success: false,
+                message: 'No puedes desactivar tu propio usuario.'})
+        }
+            
+        // Alternar estado
+        usuario.activo = !usuario.activo;
+        await usuario.save();
+
+        // Respuesta
+        res.json({
+            success: true,
+            message: `Usuario cambio al estado ${usuario.activo ? 'activo' : 'desactivado'} de forma exitosa.`,
+            data: {
+                usuario: usuario.toJSON()
+            }
+        })
+
+    }catch(error){
+        console.error('Error en alternarUsuario: ', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al alternar estado de usuario',
+            error: error.message
+        });
+    }}
+        
+/**
+ * ELIMINAR USUARIO
+ * ===========================================
+ * DELETE /api/admin/usuario
+ * 
+ * @param {Object} req
+ * @param {Object} res
+ */
+const eliminarUsuario = async (req, res) => {
+    try {
+        const {id} = req.params;
+
+        // Buscar usuario
+        const usuario = await Usuario.findByPk(id);
+
+        if (!usuario){
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        // Respues exitosa
+        res.json({
+            success: true,
+            message: 'Usuario eliminado exitosamente',
+            error: error.message
+            })
+        } catch (error){
+            console.error('Error en eliminarUsuario: ', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al eliminar usuario',
+                error: error.message
+            });
+}}
+
+/**
+ * OBTENER ESTADISTICAS DE LOS USUARIO
+ * ============================================
+ * GET /api/admin/usuarios/estadisticas
+ * 
+ * @param {Object} req
+ * @param {Object} res 
+ */
+const obtenerEstadisticasUsuarios = async (req, res) => {
+    try{
+        // Datos de usuario
+        const totalUsuarios = await Usuario.count();
+        const totalClientes = await Usuario.count({where: {rol: 'cliente'}});
+        const totalAdmins = await Usuario.count({where: {rol: 'administrador'}});
+        const usuariosActivos = await Usuario.count({where: {activo: true}});
+        const usuariosInactivos = await Usuario.count({where: {activo: false}});
+    
+        res.json({
+            success: true,
+            data: {
+                total: totalUsuarios,
+                porRol: {
+                    cliente: totalClientes,
+                    administrador: totalAdmins
+                },
+                porEstado: {
+                    activos: usuariosActivos,
+                    inactivos: usuariosInactivos
+                }
+            },
+            message: 'Estadisticas de usuarios obtenidas exitosamente.'
+        })
+
+    }catch(error){
+        console.error('Error en obtenerEstadisticasUsuarios: ', error);
+        res.json({
+            success: false,
+            message: 'Error al obtener estadisticas de usuarios',
+            error: error.message
+        });
+    }
+}
+
+module.exports = {
+    obtenerUsuarios,
+    obtenerUsuarioById,
+    crearUsuario,
+    actualizarUsuario,
+    alternarUsuario,
+    eliminarUsuario,
+    obtenerEstadisticasUsuarios
+}

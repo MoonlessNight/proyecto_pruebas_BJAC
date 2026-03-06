@@ -485,27 +485,35 @@ const actualizarProducto = async (req, res) => {
 };
 
 /**
- * ACTIVAR Y/O DESACTIVAR PRODUCTO
+ * ACTIVAR Y/O DESACTIVAR USUARIO
  * ====================================================================
  * PATCH / api / admin / productos / :id / estado
  * 
- * Se desactiva el producto
+ * Se desactiva el usuario
  * 
  * @param {Object} req - request express
  * @param {Object} res - responde express
  */
-const toggleProducto = async (req, res) => {
+const alternarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
 
         // =============================== Buscar Producto ===============================
-        const producto = await Producto.findByPk(id);
+        const usuario = await Usuario.findByPk(id);
 
-        if (!producto) {
+        if (!usuario) {
             return res.status(400).json({
                 success: false,
-                message: 'Producto no encontrado'
+                message: 'Usuario no encontrado.'
             });
+        }
+
+        // No permite desactivar el propio admin
+        if (usuario.rol === 'administrador') {
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede desactivar el administrador.'
+            })
         }
 
         // =============================== Alternar estado activo ===============================
