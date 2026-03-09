@@ -225,7 +225,7 @@ const obtenerPerfil = async (req, res) => {
         res.json({
             success: true,
             data: {
-                usuario:
+                usuario: usuario
             }
         });
 
