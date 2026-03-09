@@ -472,5 +472,6 @@ const toggleCategoria = async (req,res) => {
         crearCategoria,
         updateCategoria,
         toggleCategoria,
-        eliminarCategoria
+        eliminarCategoria,
+        getEstadisticasCategoria
     };
