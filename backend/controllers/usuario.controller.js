@@ -2,14 +2,13 @@
  * CONTROLADOR DE USUARIOS ADMIN
  * ====================================================================
  * Gestión de usuarios
- * Lista 
  */
 
 /**
  *  IMPORTAR MODELOS
  * ====================================================================*/
-import { error } from 'node:console';
-import Usuario from '../models/usuario.js';
+const Usuario = require('../models/usuario.js');
+const { Op } = require('sequelize');
 
 /**
  * OBTENER TODOS LOS USUARIOS
@@ -33,8 +32,8 @@ const obtenerUsuarios = async (req, res) => {
             where[Op.or] = [
                 { nombre: { [Op.iLike]: `%${buscar}%` } },
                 { apellido: { [Op.iLike]: `%${buscar}%` } },
-                { correo: { [Op.iLike]: `%${buscar}%` } }
-            ]
+                { email: { [Op.iLike]: `%${buscar}%` } }
+            ];
         }
 
         // Paginacion
@@ -46,19 +45,23 @@ const obtenerUsuarios = async (req, res) => {
             attributes: {
                 exclude: ['password']
             },
-            offset: (parseInt(pagina) - 1) * parseInt(limite),
-            order: [['nombre', 'ASC']]
+            offset,
+            limit: parseInt(limite),
+            order: [['nombre', 'ASC'], ['apellido', 'ASC']]
         });
 
-        // Respuesta existosa
+        // Respuesta exitosa - CORREGIDO: faltaba incluir los usuarios en la respuesta
         res.json({
             success: true,
+            data: {
+                usuarios
+            },
             paginacion: {
                 pagina: parseInt(pagina),
                 limite: parseInt(limite),
                 total: count,
                 totalPaginas: Math.ceil(count / parseInt(limite))
-            },
+            }
         });
     } catch (error) {
         console.error('Error en obtenerUsuarios: ', error);
@@ -74,7 +77,6 @@ const obtenerUsuarios = async (req, res) => {
  * OBTENER USUARIO POR ID
  * ====================================================================
  * GET /api/admin/usuarios/:id
- * 
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
@@ -115,19 +117,17 @@ const obtenerUsuarioById = async (req, res) => {
 /**
  * CREAR UN USUARIO
  * ================================================
- * POST / aip / admin / usuarios
+ * POST /api/admin/usuarios
  * Body: {nombre, apellido, email, password, rol, telefono, direccion}
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
-
 const crearUsuario = async (req, res) => {
     try {
         const { nombre, apellido, email, password, rol, telefono, direccion } = req.body;
 
         // Validación 1 verificar campos requeridos
-
         if (!nombre || !apellido || !email || !password || !rol) {
             return res.status(400).json({
                 success: false,
@@ -135,18 +135,19 @@ const crearUsuario = async (req, res) => {
             });
         }
 
-        // Validación 2 verificar que el email no existia
+        // Validación 2 verificar que el email no exista
         const usuarioExistente = await Usuario.findOne({ where: { email } });
 
         if (usuarioExistente) {
             return res.status(400).json({
                 success: false,
-                message: `Ya existe un usuario con ese email "${email}"`,
+                message: `Ya existe un usuario con el email "${email}"`,
             });
         }
 
-        // Validar 3 Verificar rol
-        if (!['cliente', 'auxilizar', 'adminstrador'].includes(rol)) {
+        // Validar 3 Verificar rol - CORREGIDO: 'auxiliar' y 'administrador' estaban mal escritos
+        const rolesPermitidos = ['cliente', 'auxiliar', 'administrador'];
+        if (!rolesPermitidos.includes(rol)) {
             return res.status(400).json({
                 success: false,
                 message: 'Rol invalido. Los roles permitidos son: cliente, auxiliar, administrador.'
@@ -165,18 +166,22 @@ const crearUsuario = async (req, res) => {
             activo: true
         });
 
+        // Obtener usuario sin password para la respuesta
+        const usuarioResponse = nuevoUsuario.toJSON();
+        delete usuarioResponse.password;
+
         // Respuesta exitosa
         res.status(201).json({
             success: true,
             message: 'Usuario creado exitosamente.',
             data: {
-                usuario: nuevoUsuario.toJSON()
+                usuario: usuarioResponse
             }
         });
 
     } catch (error) {
         console.error('Error en crearUsuario: ', error);
-        if (error.name == 'SequelizeValidationError') {
+        if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({
                 success: false,
                 message: 'Error de validacion.',
@@ -188,14 +193,14 @@ const crearUsuario = async (req, res) => {
             success: false,
             message: 'Error al crear el usuario',
             error: error.message,
-        })
+        });
     }
 };
 
 /**
  * ACTUALIZAR USUARIOS
  * ==========================================================
- * PUT / api / admin / usuarios / :id
+ * PUT /api/admin/usuarios/:id
  * body: {nombre, apellido, email, password, rol, telefono, direccion}
  * 
  * @param {Object} req - request express
@@ -204,51 +209,69 @@ const crearUsuario = async (req, res) => {
 const actualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, apellido, email, password, rol, telefono, direccion } = req.body;
+        const { nombre, apellido, email, password, rol, telefono, direccion, activo } = req.body;
 
         // Buscar usuario 
         const usuario = await Usuario.findByPk(id);
 
-        if (!usuario) ({
-            success: false,
-            message: 'Usuario no encontrado'
-        });
-
-        // Validar rol si es proporcionado
-        if (rol && !['cliente', 'administrador'].includes(rol)) {
-            return res.status(400).json({
+        if (!usuario) {
+            return res.status(404).json({ // CORREGIDO: faltaba el return
                 success: false,
-                message: 'Rol invalido. Los roles permitidos son: cliente, administrador.'
+                message: 'Usuario no encontrado'
             });
         }
 
-        // Actualizar campos
-        if (nombre !== undefined) Usuario.nombre = nombre;
-        if (apellido !== undefined) Usuario.apellido = apellido;
-        if (email !== undefined) Usuario.email = email;
-        if (password !== undefined) Usuario.password = password;
-        if (rol !== undefined) Usuario.rol = rol;
-        if (telefono !== undefined) Usuario.telefono = telefono;
-        if (direccion !== undefined) Usuario.direccion = direccion;
+        // Validar email único si se proporciona
+        if (email && email !== usuario.email) {
+            const emailExistente = await Usuario.findOne({ where: { email } });
+            if (emailExistente) {
+                return res.status(400).json({
+                    success: false,
+                    message: `El email "${email}" ya está en uso por otro usuario.`
+                });
+            }
+        }
+
+        // Validar rol si es proporcionado - CORREGIDO: lista completa de roles
+        const rolesPermitidos = ['cliente', 'auxiliar', 'administrador'];
+        if (rol && !rolesPermitidos.includes(rol)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Rol invalido. Los roles permitidos son: cliente, auxiliar, administrador.'
+            });
+        }
+
+        // Actualizar campos - CORREGIDO: usar usuario, no Usuario (modelo)
+        if (nombre !== undefined) usuario.nombre = nombre;
+        if (apellido !== undefined) usuario.apellido = apellido;
+        if (email !== undefined) usuario.email = email;
+        if (password !== undefined) usuario.password = password; // Se encriptará automáticamente por el hook del modelo
+        if (rol !== undefined) usuario.rol = rol;
+        if (telefono !== undefined) usuario.telefono = telefono;
+        if (direccion !== undefined) usuario.direccion = direccion;
+        if (activo !== undefined) usuario.activo = activo;
 
         await usuario.save();
 
+        // Obtener usuario sin password para la respuesta
+        const usuarioResponse = usuario.toJSON();
+        delete usuarioResponse.password;
 
         // Respuesta exitosa 
         res.json({
             success: true,
             message: 'Usuario actualizado exitosamente',
             data: {
-                usuario
+                usuario: usuarioResponse
             }
         });
     } catch (error) {
-        console.log('Error en actuaizarUsuario: ', error);
+        console.error('Error en actualizarUsuario: ', error); // CORREGIDO: console.log a console.error
 
         if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({
                 success: false,
-                message: 'Error de valiación',
+                message: 'Error de validación',
                 errors: error.errors.map(e => e.message)
             });
         }
@@ -257,21 +280,21 @@ const actualizarUsuario = async (req, res) => {
             success: false,
             message: 'Error al actualizar usuario.',
             error: error.message
-        })
+        });
     }
 };
 
 /**
- * ALTERNAR USUARIO
+ * ALTERNAR ESTADO DEL USUARIO (ACTIVAR/DESACTIVAR)
  * =====================================
- * PATCH /api/admin/usuarios
+ * PATCH /api/admin/usuarios/:id/toggle
  * 
  * @param {Object} req
  * @param {Object} res
  */
 const alternarUsuario = async (req, res) => {
     try { 
-        const {id} = req.params;
+        const { id } = req.params;
         
         // Buscar usuario
         const usuario = await Usuario.findByPk(id);
@@ -283,46 +306,52 @@ const alternarUsuario = async (req, res) => {
             });
         }
 
-        
-        if (usuario.id === req.usuario.id) {
+        // Prevenir que un admin se desactive a sí mismo
+        if (req.usuario && req.usuario.id === parseInt(id)) {
             return res.status(400).json({
                 success: false,
-                message: 'No puedes desactivar tu propio usuario.'})
+                message: 'No puedes desactivar tu propio usuario.'
+            });
         }
             
         // Alternar estado
         usuario.activo = !usuario.activo;
         await usuario.save();
 
+        // Obtener usuario sin password
+        const usuarioResponse = usuario.toJSON();
+        delete usuarioResponse.password;
+
         // Respuesta
         res.json({
             success: true,
-            message: `Usuario cambio al estado ${usuario.activo ? 'activo' : 'desactivado'} de forma exitosa.`,
+            message: `Usuario ${usuario.activo ? 'activado' : 'desactivado'} de forma exitosa.`,
             data: {
-                usuario: usuario.toJSON()
+                usuario: usuarioResponse
             }
-        })
+        });
 
-    }catch(error){
+    } catch(error){
         console.error('Error en alternarUsuario: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al alternar estado de usuario',
             error: error.message
         });
-    }}
+    }
+};
         
 /**
  * ELIMINAR USUARIO
  * ===========================================
- * DELETE /api/admin/usuario
+ * DELETE /api/admin/usuarios/:id
  * 
  * @param {Object} req
  * @param {Object} res
  */
 const eliminarUsuario = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
 
         // Buscar usuario
         const usuario = await Usuario.findByPk(id);
@@ -334,23 +363,34 @@ const eliminarUsuario = async (req, res) => {
             });
         }
 
-        // Respues exitosa
+        // Prevenir que un admin se elimine a sí mismo
+        if (req.usuario && req.usuario.id === parseInt(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'No puedes eliminar tu propio usuario.'
+            });
+        }
+
+        // Eliminar usuario
+        await usuario.destroy();
+
+        // Respuesta exitosa - CORREGIDO: estructura incorrecta
         res.json({
             success: true,
-            message: 'Usuario eliminado exitosamente',
+            message: 'Usuario eliminado exitosamente'
+        });
+    } catch (error) {
+        console.error('Error en eliminarUsuario: ', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar usuario',
             error: error.message
-            })
-        } catch (error){
-            console.error('Error en eliminarUsuario: ', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al eliminar usuario',
-                error: error.message
-            });
-}}
+        });
+    }
+};
 
 /**
- * OBTENER ESTADISTICAS DE LOS USUARIO
+ * OBTENER ESTADISTICAS DE LOS USUARIOS
  * ============================================
  * GET /api/admin/usuarios/estadisticas
  * 
@@ -358,13 +398,14 @@ const eliminarUsuario = async (req, res) => {
  * @param {Object} res 
  */
 const obtenerEstadisticasUsuarios = async (req, res) => {
-    try{
+    try {
         // Datos de usuario
         const totalUsuarios = await Usuario.count();
-        const totalClientes = await Usuario.count({where: {rol: 'cliente'}});
-        const totalAdmins = await Usuario.count({where: {rol: 'administrador'}});
-        const usuariosActivos = await Usuario.count({where: {activo: true}});
-        const usuariosInactivos = await Usuario.count({where: {activo: false}});
+        const totalClientes = await Usuario.count({ where: { rol: 'cliente' } });
+        const totalAuxiliares = await Usuario.count({ where: { rol: 'auxiliar' } }); // AÑADIDO: conteo de auxiliares
+        const totalAdmins = await Usuario.count({ where: { rol: 'administrador' } });
+        const usuariosActivos = await Usuario.count({ where: { activo: true } });
+        const usuariosInactivos = await Usuario.count({ where: { activo: false } });
     
         res.json({
             success: true,
@@ -372,6 +413,7 @@ const obtenerEstadisticasUsuarios = async (req, res) => {
                 total: totalUsuarios,
                 porRol: {
                     cliente: totalClientes,
+                    auxiliar: totalAuxiliares,
                     administrador: totalAdmins
                 },
                 porEstado: {
@@ -380,18 +422,19 @@ const obtenerEstadisticasUsuarios = async (req, res) => {
                 }
             },
             message: 'Estadisticas de usuarios obtenidas exitosamente.'
-        })
+        });
 
-    }catch(error){
+    } catch(error) {
         console.error('Error en obtenerEstadisticasUsuarios: ', error);
-        res.json({
+        res.status(500).json({ // CORREGIDO: status 500
             success: false,
             message: 'Error al obtener estadisticas de usuarios',
             error: error.message
         });
     }
-}
+};
 
+// =============================== EXPORTAR MÓDULOS ===============================
 module.exports = {
     obtenerUsuarios,
     obtenerUsuarioById,
@@ -400,4 +443,4 @@ module.exports = {
     alternarUsuario,
     eliminarUsuario,
     obtenerEstadisticasUsuarios
-}
+};

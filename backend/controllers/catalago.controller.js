@@ -1,116 +1,120 @@
 /**
  *  CONTROLADORES DE CATALOGO
  * ====================================================================
- * Permite ver los producos sin iniciar sesión
+ * Permite ver los productos sin iniciar sesión
  */
 
 /**
  *  IMPORTAR MODELOS
  * ====================================================================*/
-import SubCategoria from '../models/subCategoria.js';
-import Categoria from '../models/categoria.js';
-import Producto from '../models/producto.js';
-import { link } from 'node:fs';
+const SubCategoria = require('../models/subCategoria.js');
+const Categoria = require('../models/categoria.js');
+const Producto = require('../models/producto.js');
+const { Op } = require('sequelize');
 
+/**
+ *  IMPORTAR PATH Y FS PARA MANEJAR ARCHIVOS
+ * ====================================================================*/
+const path = require('path');
+const fs = require('fs');
 
 /**
  *  OBTENER TODOS LOS PRODUCTOS AL PUBLICO
  * ====================================================================
- * GET /api/catalago/producos
+ * GET /api/catalogo/productos
  * 
  * QUERY PARAMS:
  * categoriaId: id de la categoria para filtrar por categoria
- * subCategoriaId: id de la categoria para filtrar por subcategoria
- * precioMin, precioMax => Filstros por rango de precio
+ * subCategoriaId: id de la subcategoria para filtrar por subcategoria
+ * precioMin, precioMax => Filtros por rango de precio
+ * orden: precio_asc, precio_desc, reciente, nombre
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  * Solo muestra los productos activos y con stock disponible
- *  */
+ */
 const obtenerProductos = async (req, res) => {
     try {
-        const { categoriaId, subCategoriaId, activo, precioMax, precioMin, buscar, pagina = 1, limite = 12 } = req.query;
-        const { Op } = require('sequelize');
+        const { 
+            categoriaId, 
+            subCategoriaId, 
+            precioMax, 
+            precioMin, 
+            buscar, 
+            orden: ordenParam,
+            pagina = 1, 
+            limite = 12 
+        } = req.query;
 
         // Filtros base solo para productos activos y con stock
         const where = {
             activo: true,
-            stock: { [Op.gte]: 0 }
+            stock: { [Op.gt]: 0 } // Cambiado a > 0 para mostrar solo productos con stock
         };
 
         // Filtros opcionales
         if (categoriaId) where.categoriaId = categoriaId;
-        if (subCategoriaId) where.subCategoriaId = categoriaId;
+        if (subCategoriaId) where.subCategoriaId = subCategoriaId; // Corregido: estaba asignando categoriaId
 
         // Busqueda por texto           
         if (buscar) {
             where[Op.or] = [
                 { nombre: { [Op.iLike]: `%${buscar}%` } },
                 { descripcion: { [Op.iLike]: `%${buscar}%` } }
-            ]
+            ];
         }
 
         // Filtros por rango de precio
-        if (precioMin && precioMax) {
+        if (precioMin || precioMax) {
             where.precio = {};
             if (precioMin) where.precio[Op.gte] = parseFloat(precioMin);
             if (precioMax) where.precio[Op.lte] = parseFloat(precioMax);
-        };
-
-        // Ordenamiento 
-        let orden;
-        switch (orden) {
-            case 'precio_asc':
-                orden = [['precio', 'ASC']];
-                break;
-            case 'precio_desc':
-                orden = [['precio', 'DESC']];
-                break;
-            case 'reciente':
-                orden = [['createdAt', 'DESC']];
-                break;
-            case 'nombre':
-                orden = [['nombre', 'ASC']];
-                break;
-            default:
-                orden = [['nombre', 'ASC']]
-
         }
 
-        // =============================== Opciones de consulta ===============================
-        const opciones = {
-            where,
-            include: [{
-                model: Categoria,
-                as: 'Categorias',
-                attributes: ['id', 'nombre', 'activo']
-            },
-            {
-                model: SubCategoria,
-                as: 'SubCategorias',
-                attributes: ['id', 'nombre', 'activo']
-            }],
-            limit: parseFloat(limite),
-            offset,
-            order: [['nombre', 'ASC']]
-        };
-
-        // =============================== Obtener productos y total ===============================
-        const { count, rows: productos } = await Producto.findAndCountAll(opciones);
-
-        // =============================== Filtros ===============================
-        if (categoriaId) where.categoriaId = categoriaId;
-        if (subCategoriaId) where.subCategoriaId = subCategoriaId;
-        if (activo !== undefined) where.activo = activo === 'true';
-        if (conStock !== undefined) where.stock = { [require('sequelize').Op.gte]: 0 };
-        if (buscar) where.nombre = { [require('sequelize').Op.iLike]: `%${buscar}%` };
-
-        if (Object.keys(where).length > 0) {
-            opciones.where = where;
+        // Ordenamiento 
+        let order;
+        switch (ordenParam) {
+            case 'precio_asc':
+                order = [['precio', 'ASC']];
+                break;
+            case 'precio_desc':
+                order = [['precio', 'DESC']];
+                break;
+            case 'reciente':
+                order = [['createdAt', 'DESC']];
+                break;
+            case 'nombre':
+                order = [['nombre', 'ASC']];
+                break;
+            default:
+                order = [['nombre', 'ASC']];
         }
 
         // =============================== Paginacion ===============================
         const offset = (parseInt(pagina) - 1) * parseInt(limite);
+
+        // =============================== Opciones de consulta ===============================
+        const opciones = {
+            where,
+            include: [
+                {
+                    model: Categoria,
+                    as: 'Categoria',
+                    attributes: ['id', 'nombre']
+                },
+                {
+                    model: SubCategoria,
+                    as: 'SubCategoria',
+                    attributes: ['id', 'nombre']
+                }
+            ],
+            limit: parseInt(limite),
+            offset,
+            order
+        };
+
+        // =============================== Obtener productos y total ===============================
+        const { count, rows: productos } = await Producto.findAndCountAll(opciones);
 
         // =============================== Respuesta exitosa ===============================
         res.json({
@@ -130,48 +134,43 @@ const obtenerProductos = async (req, res) => {
             success: false,
             message: 'Error al obtener productos',
             error: error.message
-        })
+        });
     }
-}
+};
 
 /**
- * OBTENER LOS PRODUCTOS POR ID
+ * OBTENER PRODUCTO POR ID (PÚBLICO)
  * ====================================================================
- * GET / api / admin / producto /:id
- * 
- * - Activo true/false (filtrar por estado)
- * - incluirsubcategorias true/false (incluir subcategoria relacionadas)
+ * GET /api/catalogo/producto/:id
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
 const obtenerProductosById = async (req, res) => {
     try {
-        const { id } = req.query;
+        const { id } = req.params; // Corregido: usar params, no query
 
-        // =============================== Busca productos con relación ===============================
-        const producto = await Producto.findByPk(id, {
+        // =============================== Busca producto con relación ===============================
+        const producto = await Producto.findOne({
             where: {
                 id,
-                activo: true
+                activo: true,
+                stock: { [Op.gt]: 0 }
             },
-            incluide: [
+            include: [
                 {
                     model: Categoria,
-                    as: 'categoria',
-                    attributes: ['id'],
+                    as: 'Categoria',
+                    attributes: ['id', 'nombre'],
                     where: { activo: true }
                 },
                 {
                     model: SubCategoria,
-                    as: 'subCategoria',
-                    attributes: ['id'],
+                    as: 'SubCategoria',
+                    attributes: ['id', 'nombre'],
                     where: { activo: true }
                 }
-            ],
-            limite: parseInt(limite),
-            offset,
-            order: [['nombre', 'ASC']]
+            ]
         });
 
         if (!producto) {
@@ -184,15 +183,7 @@ const obtenerProductosById = async (req, res) => {
         // =============================== Respuesta exitosa ===============================
         res.json({
             success: true,
-            data: {
-                productos,
-                paginacion: {
-                    total: count,
-                    pagina: parseInt(pagina),
-                    limite: parseInt(limite),
-                    totalPaginas: Math.ceil(count / parseInt(limite))
-                }
-            }
+            data: { producto }
         });
 
     } catch (error) {
@@ -201,23 +192,20 @@ const obtenerProductosById = async (req, res) => {
             success: false,
             message: 'Error al obtener producto',
             error: error.message
-        })
+        });
     }
 };
-
 
 /**
  * OBTENER LAS CATEGORIAS CON CONTEO DE PRODUCTOS
  * ====================================================================
- * GET / api / admin / categorias
+ * GET /api/catalogo/categorias
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
 const obtenerCategorias = async (req, res) => {
     try {
-        const { Op } = require('sequelize');
-
         // =============================== Busca categorias activas ===============================
         const categorias = await Categoria.findAll({
             where: { activo: true },
@@ -234,7 +222,8 @@ const obtenerCategorias = async (req, res) => {
                 }
             });
             return {
-                ...categoria.toJSON(),
+                id: categoria.id,
+                nombre: categoria.nombre,
                 totalProductos
             };
         }));
@@ -246,10 +235,10 @@ const obtenerCategorias = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en conteoCategorias: ', error);
+        console.error('Error en obtenerCategorias: ', error);
         res.status(500).json({
             success: false,
-            message: 'Error al obtener conteo de categorias.',
+            message: 'Error al obtener categorias.',
             error: error.message
         });
     }
@@ -258,18 +247,22 @@ const obtenerCategorias = async (req, res) => {
 /**
  * OBTENER LAS SUBCATEGORIAS CON CONTEO DE PRODUCTOS
  * ====================================================================
- * GET / api / admin / subcategorias
+ * GET /api/catalogo/subcategorias
+ * Query param: categoriaId (opcional)
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
 const obtenerSubCategorias = async (req, res) => {
     try {
-        const { Op } = require('sequelize');
+        const { categoriaId } = req.query;
+        
+        const where = { activo: true };
+        if (categoriaId) where.categoriaId = categoriaId;
 
         // =============================== Busca subcategorias activas ===============================
         const subCategorias = await SubCategoria.findAll({
-            where: { activo: true },
+            where,
             order: [['nombre', 'ASC']]
         });
 
@@ -277,13 +270,15 @@ const obtenerSubCategorias = async (req, res) => {
         const subCategoriasConConteo = await Promise.all(subCategorias.map(async (subCategoria) => {
             const totalProductos = await Producto.count({
                 where: {
-                    categoriaId: subCategoria.id,
+                    subCategoriaId: subCategoria.id, // Corregido: usar subCategoriaId, no categoriaId
                     activo: true,
                     stock: { [Op.gt]: 0 }
                 }
             });
             return {
-                ...subCategoria.toJSON(),
+                id: subCategoria.id,
+                nombre: subCategoria.nombre,
+                categoriaId: subCategoria.categoriaId,
                 totalProductos
             };
         }));
@@ -295,10 +290,10 @@ const obtenerSubCategorias = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en conteoSubcategorias: ', error);
+        console.error('Error en obtenerSubCategorias: ', error);
         res.status(500).json({
             success: false,
-            message: 'Error al obtener conteo de subcategorias.',
+            message: 'Error al obtener subcategorias.',
             error: error.message
         });
     }
@@ -307,257 +302,58 @@ const obtenerSubCategorias = async (req, res) => {
 /**
  * OBTENER LOS PRODUCTOS DESTACADOS
  * ====================================================================
- * GET / api / admin / subcategorias
+ * GET /api/catalogo/productos/destacados
  * 
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
 const obtenerProductosDestacados = async (req, res) => {
     try {
-        const { Op } = require('sequelize');
-
-        // =============================== Busca subcategorias activas ===============================
-        const productosDestacados = await SubCategoria.findAll({
-            where: { activo: true },
-            order: [['nombre', 'ASC']]
-        });
-
-        // =============================== Contar productos por subcategoria ===============================
-        const productosDestacadosConConteo = await Promise.all(productosDestacados.map(async (productoDestacado) => {
-            const totalProductos = await Producto.count({
-                where: {
-                    subCategoriaId: productoDestacado.id,
-                    activo: true,
-                    stock: { [Op.gt]: 0 }
+        // Asumiendo que hay un campo 'destacado' en el modelo Producto
+        // Si no existe, puedes modificar este filtro
+        const productosDestacados = await Producto.findAll({
+            where: { 
+                activo: true, 
+                stock: { [Op.gt]: 0 },
+                // destacado: true // Descomentar si existe el campo
+            },
+            include: [
+                {
+                    model: Categoria,
+                    as: 'Categoria',
+                    attributes: ['id', 'nombre']
+                },
+                {
+                    model: SubCategoria,
+                    as: 'SubCategoria',
+                    attributes: ['id', 'nombre']
                 }
-            });
-            return {
-                ...productoDestacado.toJSON(),
-                totalProductos
-            };
-        }));
+            ],
+            limit: 10, // Limitar a 10 productos destacados
+            order: [['createdAt', 'DESC']] // Los más recientes primero
+        });
 
         // =============================== Respuesta exitosa ===============================
         res.json({
             success: true,
-            data: productosDestacadosConConteo
+            data: productosDestacados
         });
 
     } catch (error) {
-        console.error('Error en conteoProductosDestacados: ', error);
+        console.error('Error en obtenerProductosDestacados: ', error);
         res.status(500).json({
             success: false,
-            message: 'Error al obtener                                                                                              conteo de productos destacados.',
+            message: 'Error al obtener productos destacados.',
             error: error.message
         });
     }
 };
 
-
-/**
- * ACTUALIZAR PRODUCTO
- * ====================================================================
- * PUT / api / admin / productos / :id
- * body: {nombre, descripcion}
- * 
- * @param {Object} req - request express
- * @param {Object} res - responde express
- */
-const actualizarProducto = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { nombre, descripcion } = req.body;
-
-        // =============================== Buscar subcategoria ===============================
-        const producto = await Producto.findByPk(id);
-
-        if (!producto) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado'
-            });
-        }
-
-        // =============================== Validación 1 — Verificar categoria ===============================
-        if (categoriaId && categoriaId !== producto.categoriaId) {
-            const categoria = await Producto.findByPk(categoriaId);
-
-            if (!categoria || !categoria.activo) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Categoria incalida o inactiva',
-                })
-            }
-        }
-
-        // =============================== Validación 2 — Verificar subcategoria ===============================
-        if (subCategoriaId && subCategoriaId !== producto.subCategoriaId) {
-            const subCategoria = await Producto.findByPk(categoriaId);
-
-            if (!subCategoria || !subCategoria.activo) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Categoria incalida o inactiva',
-                })
-            }
-        }
-        const catId = categoriaId || producto.categoriaId
-
-        // =============================== Validación 3 — Verificar subcategoria ===============================
-        if (!subCategoria.categoriaId !== parseInt(catId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La subcategoria no pertenece a la categoria seleccionada.',
-            })
-        }
-
-        // =============================== Validación 4 — Verificar stock ===============================
-        if (stock !== undefined && parseInt(stock) < 0) {
-            return res.status(400).json({
-                success: false,
-                message: `El producto "${nombre}" debe ser mayor a 0 unidades.`,
-            })
-        }
-
-        // =============================== Validación 5 — Verificar precio ===============================
-        if (precio !== undefined && parseFloat(precio) < 0) {
-            return res.status(400).json({
-                success: false,
-                message: `El producto "${nombre}" debe tener un precio mayor a 0.`,
-            })
-        }
-
-        // =============================== Manejar Imagen ===============================
-        const nombreImagen = req.file.filename;
-        if (imagen !== undefined) {
-            const rutaImagenAnterior = path.join(__dirname, '../uploads', producto.imagen);
-            try {
-                await fs.unlink(rutaImagenAnterior);
-            } catch (error) {
-                console.error('Error al eliminar la imagen subida: ', error)
-            }
-            producto.imagen = nombreImagen;
-        }
-        // =============================== Actualizar campos ===============================
-        if (nombre !== undefined) producto.nombre = nombre;
-        if (descripcion !== undefined) producto.descripcion = descripcion;
-        if (activo !== undefined) producto.activo = activo;
-        if (categoriaId !== undefined) producto.categoriaId = categoriaId;
-        if (subCategoriaId !== undefined) producto.subCategoriaId = subCategoriaId;
-        if (stock !== undefined) producto.stock = parseInt(stock);
-        if (precio !== undefined) producto.precio = parseFloat(precio);
-
-        if (!producto.activo) {
-            return res.status(400).sjon({
-                success: false,
-                message: 'El Producto no esta activo'
-            })
-        }
-
-        // =============================== Guardar cambios ===============================
-        await producto.save();
-
-        // =============================== Respuesta exitosa =============================== 
-        res.json({
-            success: true,
-            message: 'Producto actualizado exitosamente',
-            data: {
-                producto
-            }
-        });
-    } catch (error) {
-        console.log('Error en actualizarProducto: ', error);
-
-        if (error.name === 'SequelizeValidationError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Error de validación.',
-                errors: error.errors.map(e => e.message)
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            message: 'Error al actualizar el producto',
-            error: error.message
-        })
-    }
-};
-
-/**
- * ACTIVAR Y/O DESACTIVAR USUARIO
- * ====================================================================
- * PATCH / api / admin / productos / :id / estado
- * 
- * Se desactiva el usuario
- * 
- * @param {Object} req - request express
- * @param {Object} res - responde express
- */
-const alternarUsuario = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // =============================== Buscar Producto ===============================
-        const usuario = await Usuario.findByPk(id);
-
-        if (!usuario) {
-            return res.status(400).json({
-                success: false,
-                message: 'Usuario no encontrado.'
-            });
-        }
-
-        // No permite desactivar el propio admin
-        if (usuario.rol === 'administrador') {
-            return res.status(400).json({
-                success: false,
-                message: 'No se puede desactivar el administrador.'
-            })
-        }
-
-        // =============================== Alternar estado activo ===============================
-        const nuevoEstado = !producto.activo;
-        producto.activo = nuevoEstado;
-
-        // =============================== Guardar cambios ===============================
-        await producto.save();
-
-        // =============================== Respuesta exitosa ===============================
-        res.json({
-            success: true,
-            message: `Producto cambio al estado ${nuevoEstado ? 'activo' : 'desactivado'} de forma exitosa.`,
-            data: {
-                productosAfectados
-            }
-        });
-
-    } catch (error) {
-        console.error('Error en toggleProducto: ', error);
-
-        if (req.file) {
-            const rutaImagen = path.join(__dirname, '../uploads', producto.imagen);
-            try {
-                await fs.unlink(rutaImagen);
-            } catch (err) {
-                console.error('Error al eliminar la imagen subida: ', err)
-            }
-        }
-        res.status(500).json({
-            success: false,
-            message: 'Error al actualizar estado de producto',
-            error: error.message
-        });
-    }
-};
-
-
-export default {
+// =============================== EXPORTAR MÓDULOS ===============================
+module.exports = {
     obtenerProductos,
     obtenerProductosById,
-    actualizarProducto,
-    toggleProducto,
-    obtenerProductosDestacados,
     obtenerCategorias,
-    obtenerSubCategorias,                                                                                                                                   
+    obtenerSubCategorias,
+    obtenerProductosDestacados
 };

@@ -563,6 +563,7 @@ module.exports =  {
     obtenerPedidos,
     obtenerPedidoPorId,
     cancelarPedido,
+    // Admin
     obtenerTodosPedidos,
     actualizarEstadoPedido,
     obtenerEstadisticasPedidos

@@ -23,7 +23,7 @@ const Producto = require('../models/producto');
  * 
  */
 
-const getCategorias = async (req, res) =>{
+const obtenerCategoria = async (req, res) =>{
     try {
         const {activo, incluirSubCategorias} = req.query;
 
@@ -58,7 +58,7 @@ const getCategorias = async (req, res) =>{
         });
         
     } catch (error) {
-        console.error('Error en getCategorias: ', error);
+        console.error('Error en obtenerCategoria: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener categoria',
@@ -79,7 +79,7 @@ const getCategorias = async (req, res) =>{
  * 
  */
 
-const getCategoriasById = async (req, res) =>{
+const obtenerCategoriaById = async (req, res) =>{
     try {
         const {id} = req.query;
 
@@ -117,7 +117,7 @@ const getCategoriasById = async (req, res) =>{
         });
         
     } catch (error) {
-        console.error('Error en getCategoriasById: ', error);
+        console.error('Error en obtenerCategoriaById: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener categoria',
@@ -196,7 +196,7 @@ const crearCategoria = async (req, res) => {
      * @param {Object} req - request express
      * @param {Object} res - responde express
      */
-    const updateCategoria = async (req,res) => {
+    const actualizarCategoria = async (req,res) => {
         try {
             const {id} = req.params;
             const {nombre, descripcion} = req.body;
@@ -259,7 +259,7 @@ const crearCategoria = async (req, res) => {
      * @param {Object} req - request express
      * @param {Object} res - responde express
      */
-const toggleCategoria = async (req,res) => {
+const alterarCategoria = async (req,res) => {
     try {
         const {id} = req.params;
 
@@ -298,7 +298,7 @@ const toggleCategoria = async (req,res) => {
         });
 
         } catch (error) {
-            console.error('Error en toggleCategoria: ', error);
+            console.error('Error en alterarCategoria: ', error);
             res.status(500).json({
                 success: false,
                 message: 'Error al actualizar estado de categoria',
@@ -381,7 +381,7 @@ const toggleCategoria = async (req,res) => {
      * @param {Object} res - Response Express
      * 
      */
-    const getEstadisticasCategoria = async (req,res) => {
+    const obtenerEstadisticasCategoria = async (req,res) => {
         try {
             const {id} = req.params;
             // Verficar que la categoria exista
@@ -453,12 +453,8 @@ const toggleCategoria = async (req,res) => {
                 }
             });
 
-
-
-            
-
         } catch (error) {
-            console.error('Error en getEstadisticasCategoria: ', error);
+            console.error('Error en obtenerEstadisticasCategoria: ', error);
             res.status(500).json({
                 success: false,
                 message: 'Error al obtener estadisticas de categoria',
@@ -467,11 +463,11 @@ const toggleCategoria = async (req,res) => {
         }
     };
     module.exports = {
-        getCategorias,
-        getCategoriasById,
+        obtenerCategoria,
+        obtenerCategoriaById,
         crearCategoria,
-        updateCategoria,
-        toggleCategoria,
+        actualizarCategoria,
+        alterarCategoria,
         eliminarCategoria,
-        getEstadisticasCategoria
+        obtenerEstadisticasCategoria
     };

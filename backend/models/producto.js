@@ -45,45 +45,55 @@ const Producto = sequelize.define("Producto", {
 
     // ================================= DESCRIPCION DETALLADO DEL PRODUCTO =============================
     descripcion:{
-        type: DataTypes.TEXT,
-        allowNull: true,
+        type: DataTypes.TEXT, // Tipo de dato texto
+        allowNull: true, // Puede estar vacio. Opcional.
     },
 
     // ================================= PRECIO DEL PRODUCTO  =============================
     precio:{
         type: DataTypes.DECIMAL(10,2), // Hasta 99.99,999.99
-        allowNull: false,
+        allowNull: false, // No permitir valores nulos
         validate:{
+
+            // Validar que sea del mismo tipo que se pide
             isDecimal: {
                 msg:"El precio debe ser un numero decimal."
             },
+
+            // Valir que el precio este por encima del valor o igual que el valor minimo 
             min:{
-                args:[0],
+                args:[0], // Argumento usado para la validacción
                 msg:"El precio no puede ser negativo."
             }}},
 
     // ================================= STOCK DEL PROUCTO —  CANTIADAD DISPONIBLE EN EL INVENTARIO ==========================
     stock: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0,
+        type: DataTypes.INTEGER, // Tipo de dato entero
+        allowNull: false, // No permitir valores nulos
+        defaultValue: 0, // Valor por defecto
         validate:{
+
+            // Validar que sea del mismo tipo que se pide
             isInt: {
                 msg:"El stock debe ser un numero entero."
             },
+
+            // Valir que el precio este por encima del valor o igual que el valor minimo 
             min:{
-                args:[0],
+                args:[0], // Argumento usado para la validacción
                 msg:"El stock no puede ser negativo."
             }}},
 
     // ================================= IMAGEN DEL PRODUCTO — EJ DE GUARDADO: coca-cola-producto.jpg — RUTA: uploads/ ==========================
     imagen:{
-        type: DataTypes.STRING(255),
-        allowNull: true,// la imgaen puede ser opcional 
+        type: DataTypes.STRING(255), // Tipo de dato alfanúmerico
+        allowNull: true, //Se permite valores vacios. Opcional
         validate:{
+            
+            // Validar que el tipo que se requiere, cumpla
             is:{
                 args: /\.(jpg|jpeg|png|gif)$/i,
-                msg:"la imagen debe ser un archivo con extension jpg, jpeg, png o gif"
+                msg:"La imagen debe ser un archivo con extension jpg, jpeg, png o gif."
             }
         }
     },

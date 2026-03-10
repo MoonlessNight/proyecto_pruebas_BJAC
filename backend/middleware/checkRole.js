@@ -188,5 +188,6 @@ module.exports = {
     esCliente,
     tieneRol,
     esPropioUsuario,
-    esAdminAuxiliar
+    esAdminAuxiliar,
+    
 };

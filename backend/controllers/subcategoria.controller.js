@@ -23,7 +23,7 @@ const Producto = require('../models/producto');
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  *  */
-const getSubCategorias = async (req, res) =>{
+const obtenerSubCategoria = async (req, res) =>{
     try {
         const {categoriaId, activo, incluirCategoria} = req.query;
 
@@ -62,7 +62,7 @@ const getSubCategorias = async (req, res) =>{
         });
         
     } catch (error) {
-        console.error('Error en getSubCategorias: ', error);
+        console.error('Error en obtenerSubCategoria: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener las subcategorías',
@@ -82,7 +82,7 @@ const getSubCategorias = async (req, res) =>{
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
-const getSubCategoriasById = async (req, res) =>{
+const obtenerSubCategoriaById = async (req, res) =>{
     try {
         const {id} = req.params;
 
@@ -116,7 +116,7 @@ const getSubCategoriasById = async (req, res) =>{
         });
         
     } catch (error) {
-        console.error('Error en getSubCategoriasById: ', error);
+        console.error('Error en obtenerSubCategoriaById: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener la subcategoría',
@@ -298,7 +298,7 @@ const actualizarSubCategoria = async (req,res) => {
  * @param {Object} req - request express
  * @param {Object} res - responde express
  */
-const toggleSubCategoria = async (req,res) => {
+const alterarSubCategoria = async (req,res) => {
     try {
         const {id} = req.params;
 
@@ -333,7 +333,7 @@ const toggleSubCategoria = async (req,res) => {
         });
 
         } catch (error) {
-            console.error('Error en toggleSubCategoria: ', error);
+            console.error('Error en alterarSubCategoria: ', error);
             res.status(500).json({
                 success: false,
                 message: 'Error al actualizar estado de subcategoría',
@@ -406,7 +406,7 @@ const eliminarSubCategoria = async (req, res) => {
  * @param {Object} res - Response Express
  * 
  */
-const getEstadisticasSubCategoria = async (req,res) => {
+const obtenerEstadisticasSubCategoria = async (req,res) => {
     try {
         const {id} = req.params;
 // =============================== Verficar que la sub-categoria exista ===============================
@@ -469,7 +469,7 @@ const getEstadisticasSubCategoria = async (req,res) => {
                 }}});
 
     } catch (error) {
-        console.error('Error en getEstadisticasSubCategoria: ', error);
+        console.error('Error en obtenerEstadisticasSubCategoria: ', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener estadísticas de la subcategoría',
@@ -478,11 +478,11 @@ const getEstadisticasSubCategoria = async (req,res) => {
     }
 };
     module.exports = {
-        getSubCategorias,
-        getSubCategoriasById,
+        obtenerSubCategoria,
+        obtenerSubCategoriaById,
         crearSubCategoria,
         actualizarSubCategoria,
-        toggleSubCategoria,
+        alterarSubCategoria,
         eliminarSubCategoria,
-        getEstadisticasSubCategoria
+        obtenerEstadisticasSubCategoria
     };
