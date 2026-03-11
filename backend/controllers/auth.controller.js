@@ -91,7 +91,7 @@ const nuevoUsuario = await Usuario.create({
     rol: 'cliente'
 });
 
-const toke = generarToken ({
+const token = generarToken ({
     id: nuevoUsuario.id,
     nombre: nuevoUsuario.nombre,
     rol: nuevoUsuario.rol
@@ -355,5 +355,6 @@ module.exports = {
     registrarUsuario,
     iniciarSesion,
     obtenerPerfil,
-    actualizarPerfil
+    actualizarPerfil,
+    cambiarContrasena   
 }

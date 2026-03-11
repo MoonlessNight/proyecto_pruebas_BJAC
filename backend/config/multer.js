@@ -1,24 +1,23 @@
-/*
-Configuracion de subida de archivos
+/**
+ * Configuracion de subida de archivos
+ * ========================================
+ * Multear es un middleware para menejar la subida de archivos
+ * Este archivo configurar como y donde se guardan las imagenes.
+ */
 
-Multear es un middleware para menejar la subida de archivos en 
-Este archivo configura como y donde se guardan las imagenes
-*/
-
-// Importar multer para manejar archivos 
+//  ======================================== Importar multer para manejar archivos  ========================================
 const multer = require('multer');
 
-// Importar path trabajar con rutas de archivos
+//  ======================================== Importar path trabajar con rutas de archivos  ========================================
 const path = require('path');
 
-// Importar fs para verficar /crear directorios
+//  ======================================== Importar fs para verficar /crear directorios  ========================================
 const fs = require('fs');
-const { error } = require('console');
 
-// Importar dotenv para variables de entorno
+//  ======================================== Importar dotenv para variables de entorno  ========================================
 require('dotenv').config();
 
-// Obtener la ruta donde se guardan los archivos
+//  ======================================== Obtener la ruta donde se guardan los archivos  ========================================
 const uploadPath = process.env.UPLOAD_PATH || './uploads';
 
 // Verificar si la carpeta uploads existe, si no, crearla
@@ -27,56 +26,53 @@ if (!fs.existsSync(uploadPath)) {
     console.log(`Carpeta ${uploadPath}: creada`);
 }
 
-/* 
-Configuracion de almacenamiento de multer
-Define donde y como se guardan los archivos
-*/
-
+/**
+ * Configuracion de almacenamiento de multer
+ * ========================================================
+ * Define donde y como se guardan los archivos
+ */
 const storage = multer.diskStorage({
-    /*
-    Destination: define la carpeta destino donde se guardan el archivo
-    @param {Object} req - Objeto de petición HTTP
-    @param {Object} file - Archivo que esta subiendo.
-    @param {Funtion} cb - Callback que se llama con (error, destination)
-    */
+    /**
+     * Destination: define la carpeta destino donde se guardan el archivo
+     * ========================================
+     * @param {Object} req - Objeto de petición HTTP
+     * @param {Object} file - Archivo que esta subiendo.
+     * @param {Funtion} cb - Callback que se llama con (error, destination)
+     */
     destination: function(req, file, cb) {
         // cb(null, ruta) -> sin error, ruta = carpeta destino
         cb(null, uploadPath);
     },
 
-    /*
-    filename: define el nombre con el que se guarda el archivo
-    formato: timestamp-nombreoriginal.ext
-
-    @param {Object} req - Objeto de petición HTTP
-    @param {Object} file - Archivo que esta subiendo.
-    @param {Funtion} cb - Callback que se llama con (error, filename)
+    /**
+    * filename: define el nombre con el que se guarda el archivo
+    * ========================================
+    * formato: timestamp-nombreoriginal.ext
+    * @param {Object} req - Objeto de petición HTTP
+    * @param {Object} file - Archivo que esta subiendo.
+    * @param {Funtion} cb - Callback que se llama con (error, filename)
     */
-
-
     filename: function(req, file, cb) {
         // Generar nombre unico usando timestamp + nombre original
         // Date.now() genera un timestamp unico
         // path.extname() extrae la extension del archivo (.jpg, .png, etc)
-
-        const uniqueSuffix = Date.now() + '-' + file.originalname;
+        const uniqueName = Date.now() + '-' + file.originalname;
         cb(null, uniqueName);
     }
 });
 
-/*
-Filtro para validar el tipo de archivo solo permite imagenes: jpg, jpeg, png, gif
-
-@param {Object} req - Objeto de petición HTTP
-@param {Object} file - Archivo que esta subiendo.
-@param {Funtion} cb - Callback que se llama con (error, acceptFile)
+/**
+* Filtro para validar el tipo de archivo solo permite imagenes: jpg, jpeg, png, gif
+*  ========================================
+* @param {Object} req - Objeto de petición HTTP
+* @param {Object} file - Archivo que esta subiendo.
+* @param {Funtion} cb - Callback que se llama con (error, acceptFile)
 */
-
 const fileFilter = function(req, file, cb) {
-    // Tipos Mine permitidfos para imagenes
+    //  ======================================== Tipos Mine permitidfos para imagenes ========================================
     const  alllowedTypes = ['imagen/jpg','image/jpeg', 'image/png', 'image/gif'];
     
-    // Verificar si el tipo de archivo esta en la lista de permitidos
+    //  ======================================== Verificar si el tipo de archivo esta en la lista de permitidos ========================================
     if (alllowedTypes.includes(file.mimetype)) {
         // cd(nulll, true) -> rechaza el archivo
         cb(null, true);
@@ -86,10 +82,10 @@ const fileFilter = function(req, file, cb) {
     };
 };
 
-/*
-Configurar multer con las opciones definidas
+/** 
+* Configurar multer con las opciones definidas
+* ========================================
 */
-
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
@@ -100,14 +96,13 @@ const upload = multer({
     }
 });
 
-/*
-Funcion para eliminar un archivo del servidor
-Útil cuando se actualiza o elimina un producto 
-
-@param {string} filePath - Nombre del archivo a eliminar
-@param {boolean} -  true si se elimino, flase si hubo error
+/**
+* Funcion para eliminar un archivo del servidor
+*  ========================================
+* Útil cuando se actualiza o elimina un producto 
+* @param {string} filePath - Nombre del archivo a eliminar
+* @param {boolean} - true si se elimino, flase si hubo error
 */
-
 const deleteFile = (filePath) => {
     try {
         // Construir la ruta completa del archivo

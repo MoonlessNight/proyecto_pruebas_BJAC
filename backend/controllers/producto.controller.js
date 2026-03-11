@@ -11,30 +11,19 @@
 const SubCategoria = require('../models/subCategoria.js');
 const Categoria = require('../models/categoria.js');
 const Producto = require('../models/producto.js');
-const { Op } = require('sequelize');
 
 /**
  *  IMPORTAR PATH Y FS PARA MANEJAR ARCHIVOS
  * ====================================================================*/
-const path = require('path');
-const fs = require('fs');
+const path = require('path'); // Encontrar archivo
+const fs = require('fs'); // La función de escribir dentro de las carpetas o sacar, directamente
 
 /**
  *  OBTENER TODOS LOS PRODUCTOS 
  * ====================================================================
  * Query params:
- * 
- * - activo true/false (filtrar por estado)
- * - incluirCategoria true/false (incluir categoria relacionada)
- * - categoriaId (filtrar por categoria)
- * - subCategoriaId (filtrar por subcategoria)
- * - incluirSubCategorias true/false (incluir subcategoria relacionada) 
- * - incluirCategorias true/false (incluir categoria relacionada)   
- * - conStock true/false (filtrar por stock)
- * - buscar (filtrar por nombre o descripcion)
- * - pagina (paginacion)
- * - limite (paginacion)
- * 
+ * - categoriaId - Filtrar por el id de las categorias
+ * - subCategoriaId - Filtrar el el id entre todas las subCategorias
  * @param {Object} req - Request Express
  * @param {Object} res - Responder Express
  */
@@ -49,7 +38,7 @@ const obtenerProductos = async (req, res) => {
             conStock, 
             buscar, 
             pagina = 1, 
-            limite = 100 
+            limite = 120 
         } = req.query;
 
         // =============================== Construir filtros ===============================
