@@ -22,7 +22,7 @@ const SubCategoria = require('../models/subCategoria');
 const obtenerCarrito = async (req, res) => {
     try {
         const itemCarrito = await Carrito.findAll({
-            where: { usuarioUd: req.usuario.id },
+            where: { usuarioUd: req.usuario.id }, // Datos requeridos para la consulta  
             include: [{
                 model: Producto,
                 as: 'producto',
@@ -46,7 +46,7 @@ const obtenerCarrito = async (req, res) => {
         // ====================================== Calcular el total del carrito ====================================
         let totalCarrito = 0;
         itemCarrito.forEach(item => {
-            total += parseFloat(item.precioUnitario) * item.cantidad;
+            totalCarrito += parseFloat(item.precioUnitario) * item.cantidad;
         });
 
         // ========================================= Respuesta exitosa =============================================
@@ -78,7 +78,7 @@ const obtenerCarrito = async (req, res) => {
  */
 const agregarAlCarrito = async (res, req) => {
     try {
-        const { productoId, cantidadNUm = 1 } = req.body;
+        const { productoId, cantidadNum = 1 } = req.body;
 
         // ====================================== Validar que haya un producto ====================================
         if (!productoId) {
@@ -106,7 +106,7 @@ const agregarAlCarrito = async (res, req) => {
         }
 
         // ====================================== Validar que la cantidad sea válida ====================================
-        if (cantidadNUm < 1) {
+        if (cantidadNum < 1) {
             return res.status(400).json({
                 success: false,
                 message: 'La cantidad debe ser mayor o igual a 1.'
@@ -114,7 +114,7 @@ const agregarAlCarrito = async (res, req) => {
         }
 
         // ====================================== Validar que la cantidad no exceda el stock ====================================
-        if (cantidadNUm > producto.stock) {
+        if (cantidadNum > producto.stock) {
             return res.status(400).json({
                 success: false,
                 message: `Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`
@@ -209,8 +209,8 @@ const actualizarItemCarrito = async (req, res) => {
         }
 
         // ====================================== Validar que la cantidad sea válida ====================================
-        const cantidadNUm = parseInt(cantidad);
-        if (cantidadNUm < 1) {
+        const cantidadNum = parseInt(cantidad);
+        if (cantidadNum < 1) {
             return res.status(400).json({
                 success: false,
                 message: 'La cantidad debe ser mayor o igual a 1.'

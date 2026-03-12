@@ -197,6 +197,9 @@ const Producto = sequelize.define("Producto", {
             if (!categoria.activo){ 
                 throw new Error ("no se puede crear un producto en una categoria inactiva");
             }
+            if (!categoriaId) {
+                throw new Error ("la categoria seleccionada no existe");
+            }
            
             //Buscar subcategoria padre 
             const subcategoria = await Subcategoria.findByPk(Producto.subCategoriaId);
@@ -255,6 +258,10 @@ Producto.prototype.obtenerUrlImagen = function (){
 Producto.prototype.haystock = function (cantidad = 1){
     return this.stock >= cantidad;
 };
+this.stock -= cantidad;
+return await this.save();
+
+
 
 
 /**

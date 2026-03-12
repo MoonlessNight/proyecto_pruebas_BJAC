@@ -12,6 +12,8 @@ const { DataTypes } = require("sequelize");
 
 // importar instancia de sequelize
 const { sequelize } = require("../config/dataBase");
+const { timeStamp } = require("console");
+
 
 /**
  * definir el modelo de carrito
