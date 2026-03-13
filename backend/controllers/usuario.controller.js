@@ -8,7 +8,7 @@
  *  IMPORTAR MODELOS
  * ====================================================================*/
 const Usuario = require('../models/usuario.js');
-const { Op } = require('sequelize');
+const { Op } = require('../config/dataBase.cjs');
 
 /**
  * OBTENER TODOS LOS USUARIOS
@@ -128,7 +128,7 @@ const crearUsuario = async (req, res) => {
         const { nombre, apellido, email, password, rol, telefono, direccion } = req.body;
 
         // Validación 1 verificar campos requeridos
-        if (!nombre || !apellido || !email || !password || !rol) {
+        if (!nombre || !email || !password || !rol) {
             return res.status(400).json({
                 success: false,
                 message: 'Todos los campos son requeridos: nombre, apellido, email, password, rol.'

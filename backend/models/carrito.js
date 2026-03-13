@@ -1,260 +1,155 @@
 /**
- * MODElo carrito 
+ * MODELO CARRITO
  * Define la tabla carrito en la base de datos
- * almacena los productos que cada usuario ha agregado a su carrito de compras
- * 
- * 
+ * Almacena los productos que cada usuario ha agregado a su carrito de compras
  */
 
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/dataBase.cjs');
 
-// importar DataTypes de sequelize
-const { DataTypes } = require("sequelize");
-
-// importar instancia de sequelize
-const { sequelize } = require("../config/dataBase");
-const { timeStamp } = require("console");
-
-
-/**
- * definir el modelo de carrito
- */
-const Carrito = sequelize.define("Carrito", {
-    // Campos de la tabla 
-    // id identificador unico (PRIMARY KEY)
+const Carrito = sequelize.define('Carrito', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
         allowNull: false
     },
-    /**
-     * usuarioID es el id del usuario al que pertenece este carrito
-     */
-    usuarioID:{
+    // Clave foránea del usuario (unificada a usuarioId)
+    usuarioId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        references:{
-            model:"usuarios",
-            key:"id"
+        references: {
+            model: 'usuarios',
+            key: 'id'
         },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE", // si se elimina el usuari0 se elimina su carrito  
-        validate:{
-            notNull:{
-                msg:"el carrito debe pertenecer a un usuario"
-            }
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+        validate: {
+            notNull: { msg: 'El carrito debe pertenecer a un usuario' }
         }
     },
-
-    /**
-     * producto ID del producto en el carrito
-     */
-    productoID:{
+    // Clave foránea del producto (unificada a productoId)
+    productoId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        references:{
-            model:"productos",
-            key:"id"
+        references: {
+            model: 'productos',
+            key: 'id'
         },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE", // si se elimina el producto se elimina del carrito
-        validate:{
-            notNull:{
-                msg:"el carrito debe pertenecer a un producto"
-            }
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+        validate: {
+            notNull: { msg: 'El carrito debe contener un producto' }
         }
     },
-
-    //cantidad de este producto en el carrito 
-    cantidad:{
+    cantidad: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 1,
-        validate:{
-            isInt:{
-                msg:"la cantidad debe ser un numero entero"
-
-            },
-            min:{
-                args:[1],
-                msg:"la cantidad debe ser al menos 1"
+        validate: {
+            isInt: { msg: 'La cantidad debe ser un número entero' },
+            min: {
+                args: [1],
+                msg: 'La cantidad debe ser al menos 1'
             }
+        }
+    },
+    precioUnitario: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+            isDecimal: { msg: 'El precio unitario debe ser un número decimal' },
+            min: {
+                args: [0],
+                msg: 'El precio unitario no puede ser negativo'
+            }
+        }
     }
-},
-
-/**
- * Precio Unitario del producto al momento de agregarlo al carrito 
- * se guardan para mantener el precio aunque el producto cambie de precio 
- */
-precioUnitario:{
-    type: DataTypes.DECIMAL(10,2),
-    allowNull: false,
-    validate:{
-        isDecimal:{
-            msg:"el precio unitario debe ser un numero decimal"
-        },
-        min:{
-            args:[0],
-            msg:"el precio unitario no puede ser negativo"
-          }
-      }
-    },   
 }, {
-    // opciones del modelo
-
-    tableName: "carritos",
+    tableName: 'carritos',
     timestamps: true,
-    //indices para mejorar las busquedas por usuarioID y productoID
-    indexes:[
+    underscored: true, // Convierte createdAt → created_at, updatedAt → updated_at
+    indexes: [
         {
-            //indice para buscar carrito por usuario
-            fields:["usuarioID"]
+            // Índice para búsquedas por usuario
+            fields: ['usuario_id'] // Nota: en snake_case por underscored: true
         },
         {
-        //Indice compuesto: un usuario no puede tener el mismo producto duplicado
-        unique:true,
-        fields:["usuarioID","productoID"],
-        name:"usuario_producto_unico"
+            // Índice único: un usuario no puede tener el mismo producto duplicado
+            unique: true,
+            fields: ['usuario_id', 'producto_id'],
+            name: 'usuario_producto_unico'
         }
     ],
-     
-        /**
-     * Hooks acciones automaticas
-     */
-    hooks : {
-        /**
-         * beforeCreate-se ejecutan antes de crear un item en el carrito
-         * verifica que esta activado y tenga stock suficiente
-         */
+    hooks: {
         beforeCreate: async (itemCarrito) => {
-            const Producto = require("./producto");
-
-            //Buscar el producto
-            const producto = await Producto.findByPk(itemCarrito.productoID);
-            if (!producto){
-                throw new Error ("El producto seleccionado no existe.");
+            const Producto = require('./producto');
+            const producto = await Producto.findByPk(itemCarrito.productoId);
+            if (!producto) {
+                throw new Error('El producto seleccionado no existe.');
             }
-            if (!producto.activo){ 
-                throw new Error ("No se puede agregar un producto inactivo al carrito.");
+            if (!producto.activo) {
+                throw new Error('No se puede agregar un producto inactivo al carrito.');
             }
-            if (!producto.haystock(itemCarrito.cantidad)){
-                throw new Error (`Stock insuficiente. Solo por hoy ${producto.stock} unidades disponibles.`);
+            // Usamos el método hayStock (definido en producto.js)
+            if (!producto.hayStock(itemCarrito.cantidad)) {
+                throw new Error(`Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`);
             }
-
             // Guardar el precio actual del producto
             itemCarrito.precioUnitario = producto.precio;
         },
-
-        /**
-         * beforeUpdate - Se ejecuta antes de actualizar un item en el carrito
-         * valida que haya stack suficiente si se aumenta la cantidad
-         */
         beforeUpdate: async (itemCarrito) => {
-            // verificar si se actualiza la cantidad
-            if (itemCarrito.changed("cantidad")) {
-                const Producto = require("./producto");
-                const producto = await Producto.findByPk(itemCarrito.productoID);
+            if (itemCarrito.changed('cantidad')) {
+                const Producto = require('./producto');
+                const producto = await Producto.findByPk(itemCarrito.productoId);
                 if (!producto) {
-                    throw new Error("El producto asociado al item del carrito no existe.");
+                    throw new Error('El producto asociado al item del carrito no existe.');
                 }
                 if (!producto.hayStock(itemCarrito.cantidad)) {
                     throw new Error(`Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`);
                 }
             }
-        },
-    },
-},
-);
+        }
+    }
+});
 
-//METODOS DE INSTANCIA
-/**
- * Metodo para calcular el subtotal de este item
- * 
- * @return {number} subtotal (cantidad * precioUnitario)
- * */
-Carrito.prototype.calcularSubtotal = function() {
+// Métodos de instancia
+Carrito.prototype.calcularSubtotal = function () {
     return parseFloat(this.precioUnitario) * parseFloat(this.cantidad);
 };
 
-/**
- * Método para actualizar la cantidad
- * 
- * @param {number} nuevaCantidad - Nueva cantidad
- * @return {Promise} - Item actualizado
- */
-Carrito.prototype.actualizarCantidad = async function(nuevaCantidad) {
-    const Producto = require("./producto");
-    
-    const producto = await Producto.findByPk(this.productoID);
-
+Carrito.prototype.actualizarCantidad = async function (nuevaCantidad) {
+    const Producto = require('./producto');
+    const producto = await Producto.findByPk(this.productoId);
     if (!producto.hayStock(nuevaCantidad)) {
         throw new Error(`Stock insuficiente. Solo hay ${producto.stock} unidades disponibles.`);
     }
-
     this.cantidad = nuevaCantidad;
     await this.save();
 };
 
-/**
- * METODO ESTATICOS (DE CLASE)
- */
-
-/**
- * Método para obtener el carrito completo de un usuario
- * incluye información de los productos
- * 
- * @param {number} usuarioID - ID del usuario
- * @return {Promise<Array>} - Lista de items del carrito con productoa
- */
-
-Carrito.obtenerCarritoUsuario = async function(usuarioID) {
-    const Producto = require("./producto");
-
+// Métodos estáticos
+Carrito.obtenerCarritoUsuario = async function (usuarioId) {
+    const Producto = require('./producto');
     return await Carrito.findAll({
-        where: { usuarioID },
+        where: { usuarioId },
         include: [
             {
                 model: Producto,
-                as: "producto"
+                as: 'producto'
             }
         ],
-        order: [["createdAt", "DESC"]]
+        order: [['createdAt', 'DESC']]
     });
 };
 
-/**
- * Método para calcular el total del carrito de un usuario
- * 
- * @param {number} usuarioID - ID del usuario
- * @return {Promise<number>} - Total del carrito
- */
-Carrito.calcularTotalCarrito = async function(usuarioID) {
-    const items = await this.findAll({ where: { usuarioID } });
-
-    let total = 0;
-    for (const item of items) {
-        total += item.calcularSubtotal();
-    }
-
-    return total;
+Carrito.calcularTotalCarrito = async function (usuarioId) {
+    const items = await this.findAll({ where: { usuarioId } });
+    return items.reduce((total, item) => total + item.calcularSubtotal(), 0);
 };
 
-/**
- * Metodo para vaciar el carrito de un usuario
- * Util después de realizar de pedido
- * 
- * @param {number} usuarioID - ID del usuario
- * @return {Promise<number>} - Numero de items eliminados
- */
-Carrito.vaciarCarrito = async function(usuarioID) {
-    return await Carrito.destroy({ where: { usuarioID } });
+Carrito.vaciarCarrito = async function (usuarioId) {
+    return await Carrito.destroy({ where: { usuarioId } });
 };
-
-
-/**
- * Expotar Modelo
- */
 
 module.exports = Carrito;
-
-

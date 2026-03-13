@@ -5,35 +5,19 @@
  * Debe usar despues deñ middleware de autenticación
  */
 const esAdministrador = (req, res, next) => {
-    try { 
-        //Verficair que existe un req.usuario (viene de la autenticacion)
-        if (!req.usuario){
-            return res.status(401).json({
-                success : false,
-                message: "Usuario no autenticado"
-            });
+    try {
+        if (!req.usuario) {
+            return res.status(401).json({ success: false, message: "Usuario no autenticado" });
         }
-
-        // Verficiar que el rol del usuario sea admin
-        if (req.usuario.rol !== "admininistrador"){
-            return res.status(403).json({
-                success : false,
-                message: "Acceso denegado. Se requiere rol de administrador"
-            });
+        if (req.usuario.rol !== "administrador") {  // ✅ corregido
+            return res.status(403).json({ success: false, message: "Acceso denegado. Se requiere rol de administrador" });
         }
-
-        // Si el usuario es administrador, continua
         next();
-
     } catch (error) {
-        console.error("Error en el middleware de verificacion de rol:", error);
-        return res.status(500).json({
-            success : false,
-            message: "Error interno del servidor"
-        });
+        console.error("Error en el middleware de verificación de rol:", error);
+        return res.status(500).json({ success: false, message: "Error interno del servidor" });
     }
-
-}
+};
 
 /**
  * MIDDLEWARE PARA VERIFICAR SI EL USUARIO ES CLIENTE
@@ -74,31 +58,24 @@ const esCliente = (req, res, next) => {
  * util para cuando una ruta tien varios roles autorizados
  * 
  */
-const tieneRol = (req, res, next) => {
-    try {
-        //Verficair que existe un req.usuario (viene de la autenticacion)
-        if (!req.usuario){
-            return res.status(401).json({
-                success : false,
-                message: "Usuario no autenticado"
-            });
+const tieneRol = (rolesPermitidos) => {
+    return (req, res, next) => {
+        try {
+            if (!req.usuario) {
+                return res.status(401).json({ success: false, message: "Usuario no autenticado" });
+            }
+            if (!rolesPermitidos.includes(req.usuario.rol)) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Acceso denegado. Se requiere uno de los roles: ${rolesPermitidos.join(", ")}`
+                });
+            }
+            next();
+        } catch (error) {
+            console.error("Error en middleware tieneRol:", error);
+            return res.status(500).json({ success: false, message: "Error interno del servidor" });
         }
-        // Verficiar que el usuario este en la lista de roles permitidos
-        if (!req.rolesPermitidos.includes(req.usuario.rol)){
-            return res.status(403).json({
-                success : false,
-                message: "Acceso denegado. Se requiere rol de " + req.rolesPermitidos.join(", ")
-            });
-        }
-
-        next();
-    } catch (error) {
-        console.error("Error en el middleware de verificacion de rol:", error);
-        return res.status(500).json({
-            success : false,
-            message: "Error interno del servidor"
-        });
-    }
+    };
 };
 
 /**
@@ -159,29 +136,19 @@ const esPropioUsuario = (req, res, next) => {
 
 const esAdminAuxiliar = (req, res, next) => {
     try {
-        //Verficair que existe un req.usuario (viene de la autenticacion)
-        if (!req.usuario){
-            return res.status(401).json({
-                success : false,
-                message: "Usuario no autenticado"
-            });
+        if (!req.usuario) {
+            return res.status(401).json({ success: false, message: "Usuario no autenticado" });
         }
-        // Verficiar que el rol del usuario sea admin o auxiliar
-        if (req.usuario.rol !== "administrador"){
-            res.status(403).json({
-                success : false,
-                message: "Acceso denegado. Se requiere rol de administrador"
-            });
+        const rolesPermitidos = ["administrador", "auxiliar"];
+        if (!rolesPermitidos.includes(req.usuario.rol)) {
+            return res.status(403).json({ success: false, message: "Acceso denegado. Se requiere rol de administrador o auxiliar" });
         }
-        // Si el usuario es administrador o auxiliar, continua
         next();
     } catch (error) {
-        console.error("Error en el middleware de esAdminAuxiliar:", error);
-        return res.status(500).json({
-            success : false,
-            message: "Error interno del servidor"
-        });
-    }};
+        console.error("Error en el middleware esAdminAuxiliar:", error);
+        return res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+};
 
 module.exports = {
     esAdministrador,

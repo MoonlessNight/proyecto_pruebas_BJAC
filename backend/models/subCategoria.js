@@ -1,43 +1,35 @@
 /*
 MODELO DE SUBCATEGORIA
 Define la tabla subcategoria en la base de datos
-alamacena las subcategorías de los productos
+almacena las subcategorías de los productos
 */
 
-// Importar DataTypes de sequelize
+// Importar DataTypes de Sequelize
 const { DataTypes } = require('sequelize');
 
-// Importar instancias de sequelize
-const { sequelize } = require('../config/dataBase');
+// Importar instancia de Sequelize
+const { sequelize } = require('../config/dataBase.cjs');
 
 /*
-Define el modelo SubCategoria 
+Define el modelo SubCategoria
 */
 const SubCategoria = sequelize.define('SubCategoria', {
-    /*
-    CAMPOS DE LA TABLA
-    */
-
-    /*
-    id - Identificador unico (PRIMARY KEY)
-    */
-
+    // ========== CAMPOS DE LA TABLA ==========
     id: {
-        type: DataTypes.INTEGER, // Tipo de dato entero
-        primaryKey: true, // Clave primaria
-        autoIncrement: true, // Auto incrementa con cada nuevo registro
-        allowNull: false // No permite valores nulos
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false
     },
-
     nombre: {
-        type: DataTypes.STRING, // Tipo de dato cadena de texto
-        allowNull: false, // No permite valores nulos
+        type: DataTypes.STRING,
+        allowNull: false,
         unique: {
-            msg: "Ya existe una subcategoria con ese nombre" // Mensaje de error si el nombre no es unico
+            msg: "Ya existe una subcategoria con ese nombre"
         },
         validate: {
             notEmpty: {
-                msg: "El nombre de la subcategoria no puede estar vacio"
+                msg: "El nombre de la subcategoria no puede estar vacío"
             },
             len: {
                 args: [2, 100],
@@ -45,145 +37,115 @@ const SubCategoria = sequelize.define('SubCategoria', {
             }
         }
     },
-    /*
-    Descripción de la subcategoría
-    */
     descripcion: {
-        type: DataTypes.TEXT, // Tipo de dato texto largo
-        allowNull: true, // Permite valores nulos
+        type: DataTypes.TEXT,
+        allowNull: true
     },
-
-    /**
-     * categoriaId - ID de la categoría a la que pertenece (FOREIGN KEY) 
-     * Esta es la relación con la tabla categoria
-     */
     categoriaId: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'categorias',              // Nombre de la tabla referenciada
-            key: 'id'                         // Columna referenciada
+            model: 'categorias',
+            key: 'id'
         },
-        onUpdate: 'CASCADE',                  // Si se actualiza el ID de la categoría, se actualiza en esta tabla
-        onDelete: 'CASCADE',                  // Si se elimina la categoría, se eliminan las subcategorías relacionadas
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
         validate: {
             notNull: {
-                msg: "Debe seleccionar una categoría" // Mensaje de error si no se proporciona un categoriaId
+                msg: "Debe seleccionar una categoría"
             }
         }
     },
-
-    /**
-     * Activo estado de la subcategoría
-     * Si es false, los productos de esta subcategoría se ocultan
-     */
     activo: {
-        type: DataTypes.BOOLEAN, // Tipo de dato booleano
-        allowNull: false, // No permite valores nulos
-        defaultValue: true // Valor por defecto es true (activo)
-    },
-    // Opciones del modelo
-    tableName: 'categorias', // Nombre de la tabla en la base de datos
-    timestamps: true, // Agrega campos createdAt y updatedAt
-
-
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    }
+}, {
+    // ========== OPCIONES DEL MODELO ==========
+    tableName: 'subcategorias',        // CORREGIDO: antes decía 'categorias'
+    timestamps: true,
+    underscored: true,                  // Usa snake_case en columnas automáticas (created_at, updated_at)
 
     indexes: [
         {
-            // Indicar para buscar subcategorias por categoria
-            fields: ['categoriaId']
+            // Índice para buscar subcategorías por categoría
+            fields: ['categoria_id']
         },
         {
-            // Indice compuesto: nombre unico por categoria
-            // Permite que dos vategorias diferentes tengan subcategorias con el mismo nombre
+            // Índice compuesto: nombre único por categoría
             unique: true,
-            fields: ['nombre', 'categoriaId'],
-            name: 'nombre_categoria_unique' // Nombre del indice
-        },
+            fields: ['nombre', 'categoria_id'],
+            name: 'nombre_categoria_unique'
+        }
     ],
-    /* 
-    Hooks Acciones automaticas 
-    */
 
+    // ========== HOOKS ==========
     hooks: {
         /**
-         * beforeCreate: se ejecuta antes de crear una subcategoría 
-         * verifica que la categoría a la que pertenece esta activa
+         * beforeCreate - se ejecuta antes de crear una subcategoría
+         * Verifica que la categoría padre exista y esté activa
          */
         beforeCreate: async (subCategoria) => {
             const Categoria = require('./categoria');
-
-            // Buscar la categoria padre
-            const categoriaEncontrada = await Categoria.findByPk(subCategoria.categoriaId);
-            if (!categoriaEncontrada || !categoriaEncontrada.activo) {
-                throw new Error("La categoría selecionada no existe");
+            const categoriaPadre = await Categoria.findByPk(subCategoria.categoriaId);
+            if (!categoriaPadre) {
+                throw new Error("La categoría seleccionada no existe");
             }
-
-            if (!categoriaEncontrada.activo) {
+            if (!categoriaPadre.activo) {
                 throw new Error("No se puede crear una subcategoría en una categoría inactiva");
             }
         },
 
         /**
-         * afterUpdate: se ejecuta despues de actualizar una subcategoría
-         * Si se desactiva una subcategoría, se desactivan todas sus productos
+         * afterUpdate - se ejecuta después de actualizar una subcategoría
+         * Si se desactiva, desactiva todos sus productos
          */
         afterUpdate: async (subcategoria, options) => {
-            // Verfica si el campo activo se cambio
             if (subcategoria.changed('activo') && !subcategoria.activo) {
                 console.log(`Desactivando subcategoría: ${subcategoria.nombre}`);
-
-                // Importar models (aquí para evitar dependencias circulares
                 const Producto = require('./producto');
-
                 try {
-                    // Desactivar todas los productos de esta subcategoría
-                    const productos = await Producto.findAll({ where: { subCategoriaId: subcategoria.id } });
-
+                    const productos = await Producto.findAll({
+                        where: { subCategoriaId: subcategoria.id }
+                    });
                     for (const producto of productos) {
-                        await producto.update({ activo: false }, { transaction: options.transaction });
+                        await producto.update(
+                            { activo: false },
+                            { transaction: options.transaction }
+                        );
                         console.log(`Producto desactivado: ${producto.nombre}`);
                     }
-
-                    console.log(`Subcategoría y productos relacionados han sido desactivados correctamente`);
-
+                    console.log('Subcategoría y productos relacionados desactivados correctamente');
                 } catch (error) {
-                    console.error(`Error al desactiva productos relacionados:`, error.message);
-                    throw error; // Re-lanzar el error
+                    console.error('Error al desactivar productos relacionados:', error.message);
+                    throw error;
                 }
             }
-            // Si se ACTIVA una categoria, NO se activa automáticamente sus subcategorias y productos
-            // El adminitrador debe activar manualmente si lo desea
+            // Si se activa, no se activan automáticamente los productos (decisión de negocio)
         }
     }
-
 });
-/*
-MÉTODO DE INSTANCIAS
-*/
 
-/** 
- * Método pra contar productos de esta subcategoría
- * @param {Promise<number>} - Número de productos
-*/
+// ========== MÉTODOS DE INSTANCIA ==========
 
-SubCategoria.prototype.contarSubcategorias = async function () {
+/**
+ * Cuenta los productos de esta subcategoría
+ * @returns {Promise<number>}
+ */
+SubCategoria.prototype.contarProductos = async function () {
     const Producto = require('./producto');
     return await Producto.count({ where: { subCategoriaId: this.id } });
 };
 
 /**
- * Método para obtener la categoria padre
- * @returns {Promise<Categoria>} - Categoria padre
+ * Obtiene la categoría padre
+ * @returns {Promise<Categoria>}
  */
-
 SubCategoria.prototype.obtenerCategoria = async function () {
     const Categoria = require('./categoria');
     return await Categoria.findByPk(this.categoriaId);
 };
 
-// Exportar el modelo 
+// Exportar el modelo
 module.exports = SubCategoria;
-
-
-

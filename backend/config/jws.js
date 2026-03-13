@@ -17,7 +17,7 @@ require('dotenv').config();
  * @param {Object} payload - Datos que se incluira en el token: id, email, rol
  * @return {string} - Token JWT generado
  */
-const generateToken = (payload) => {
+const generarToken = (payload) => {
     try {
         //jwt.sign() crea y firma un token
         // Parametros:
@@ -27,7 +27,7 @@ const generateToken = (payload) => {
         const token = jwt.sign(
             payload, // Datos de usuario
             process.env.JWT_SECRET, // Clave secreta desde .env
-            { expiresIn: process.env.JWT_EXPIRES_IN} // Tiempo de expiración
+            { expiresIn: process.env.JWT_EXPIRES_IN || '24h'} // Tiempo de expiración
         );
         return token;
     } catch (error) {
@@ -78,7 +78,7 @@ const extractToken = (authHeader) => {
 
 // ============================ Exportar las funciones ============================
 module.exports = {
-    generateToken,
+    generarToken,
     verifyToken,
     extractToken
 }

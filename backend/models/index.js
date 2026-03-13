@@ -1,6 +1,6 @@
 /**
  * Asociaciones entre modulos
- * este archivo define todas las relaciones entre modelos de sequelize
+ * este archivo define todas las relaciones entre modelos de Sequelize
  * deja ejecutar después de importar los modelos
  */
 
@@ -13,200 +13,207 @@ const Producto = require('./producto');
 const DetallePedido = require('./detallePedido');
 const Pedido = require('./pedido');
 
+
 /**
  * Definir asociaciones
- * Tipos de relaciones sequelize:
+ * Tipos de relaciones Sequelize:
  * 
- * hasone 1 - 1
- * belongsto 1 - 1
- * hasmary 1 - N
- * belongstomary N - N 
+ * hasOne - 1:1
+ * belongsTo - 1:1 (lado opuesto)
+ * hasMany - 1:N
+ * belongsToMany - N:M 
  */
 
 /**
  * Categoria - SubCategoria
  * Una categoria tiene muchas subcategorias
- * Una subcategoria pertenece a unca tegoria
+ * Una subcategoria pertenece a una categoria
  */
 Categoria.hasMany(SubCategoria, {
-    foreignKey: 'categoriaId', // Campo que conecta las tablas 
-    as: 'subcategorias', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una categoria, se elimina subcategoria
-    onUpdate: 'CASCADE', // Si se actualiza categoria actualizar subcategorias
+    foreignKey: 'categoriaId',
+    as: 'subcategorias',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 SubCategoria.belongsTo(Categoria, {
-    foreignKey: 'categoriaId', // Campo que conecta las tablas 
-    as: 'categoria', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una categoria, se elimina subcategoria
-    onUpdate: 'CASCADE', // Si se actualiza categoria actualizar subcategorias
+    foreignKey: 'categoriaId',
+    as: 'categoria',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Categoria - Producto
- * Una categoria tiene muchas productos
- * un producto pertecene a una categoria
+ * Una categoria tiene muchos productos
+ * un producto pertenece a una categoria
  */
 Categoria.hasMany(Producto, {
-    foreignKey: 'categoriaId', // Campo que conecta las tablas 
-    as: 'productos', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una categoria, se elimina producto
-    onUpdate: 'CASCADE', // Si se actualiza categoria actualizar producto
+    foreignKey: 'categoriaId',
+    as: 'productos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 Producto.belongsTo(Categoria, {
-    foreignKey: 'categoriaId', // Campo que conecta las tablas 
-    as: 'categoria', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una categoria, se elimina prodcuto
-    onUpdate: 'CASCADE', // Si se actualiza categoria actualizar el producto
+    foreignKey: 'categoriaId',
+    as: 'categoria',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * SubCategoria - Producto
- * Una subcategoria tiene muchas productos
- * un producto pertecene a una categoria
+ * Una subcategoria tiene muchos productos
+ * un producto pertenece a una subcategoria
  */
 SubCategoria.hasMany(Producto, {
-    foreignKey: 'subCategoriaId', // Campo que conecta las tablas 
-    as: 'productos', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una sibcategoria, se elimina producto
-    onUpdate: 'CASCADE', // Si se actualiza subcategoria actualizar producto
+    foreignKey: 'subCategoriaId',
+    as: 'productos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 Producto.belongsTo(SubCategoria, {
-    foreignKey: 'subCategoriaId', // Campo que conecta las tablas 
-    as: 'categoria', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una subcategoria, se elimina prodcuto
-    onUpdate: 'CASCADE', // Si se actualiza subcategoria actualizar el producto
+    foreignKey: 'subCategoriaId',
+    as: 'subcategoria', // ⚠️ CORREGIDO: Cambiado de 'categoria' a 'subcategoria'
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Usuario - Carrito
- * Una usuario tiene muchos carritos
- * Un carrito pertence a un usuario
+ * Un usuario tiene muchos carritos
+ * Un carrito pertenece a un usuario
  */
 Usuario.hasMany(Carrito, {
-    foreignKey: 'usuarioId', // Campo que conecta las tablas 
-    as: 'carritos', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un usuario, se elimina carrito
-    onUpdate: 'CASCADE', // Si se actualiza usuario actualizar carrito
+    foreignKey: 'usuarioId',
+    as: 'carritos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 Carrito.belongsTo(Usuario, {
-    foreignKey: 'usuarioId', // Campo que conecta las tablas 
-    as: 'usuario', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un usuario, se elimina carrito
-    onUpdate: 'CASCADE', // Si se actualiza usuario actualizar carrito
+    foreignKey: 'usuarioId',
+    as: 'usuario',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
- * Carrito - Producto
- * Un carrito tiene muchos productos
- * Un producto pertence a un carrito
+ * ⚠️ CORRECCIÓN: Carrito - Producto
+ * Esta relación debe ser a través de una tabla intermedia (CarritoProducto)
+ * ya que un carrito puede tener múltiples productos y un producto puede estar en múltiples carritos
  */
-Carrito.hasMany(Producto, {
-    foreignKey: 'carritoId', // Campo que conecta las tablas 
-    as: 'productos', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un carrito, se elimina producto
-    onUpdate: 'CASCADE', // Si se actualiza carrito actualizar producto
+
+// Necesitarías crear este modelo intermedio
+
+Carrito.belongsToMany(Producto, {
+    through: 'carrito_productos',
+    foreignKey: 'carritoId',
+    otherKey: 'productoId',
+    as: 'productos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
-Producto.belongsTo(Carrito, {
-    foreignKey: 'carritoId', // Campo que conecta las tablas 
-    as: 'carrito', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un carrito, se elimina producto
-    onUpdate: 'CASCADE', // Si se actualiza carrito actualizar el producto
+Producto.belongsToMany(Carrito, {
+    through: 'carrito_productos',
+    foreignKey: 'productoId',
+    otherKey: 'carritoId',
+    as: 'carritos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Usuario - Pedido
  * Un usuario tiene muchos pedidos
- * Un pedido pertence a un usuario
+ * Un pedido pertenece a un usuario
  */
 Usuario.hasMany(Pedido, {
-    foreignKey: 'usuarioId', // Campo que conecta las tablas 
-    as: 'pedidos', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un usuario, se elimina pedido
-    onUpdate: 'CASCADE', // Si se actualiza usuario actualizar pedido
+    foreignKey: 'usuarioId',
+    as: 'pedidos',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 Pedido.belongsTo(Usuario, {
-    foreignKey: 'usuarioId', // Campo que conecta las tablas 
-    as: 'usuario', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina una subcategoria, se elimina prodcuto
-    onUpdate: 'CASCADE', // Si se actualiza subcategoria actualizar el producto
+    foreignKey: 'usuarioId',
+    as: 'usuario',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Pedido - DetallePedido
- * Un Pedido tiene muchos detalle de pedido
- * Un DetallePedido pertence a un Pedido
+ * Un Pedido tiene muchos detalles de pedido
+ * Un DetallePedido pertenece a un Pedido
  */
 Pedido.hasMany(DetallePedido, {
-    foreignKey: 'pedidoId', // Campo que conecta las tablas 
-    as: 'detallesPedido', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un pedido, se elimina detallePedido
-    onUpdate: 'CASCADE', // Si se actualiza pedido actualizar detallesPedido
+    foreignKey: 'pedidoId',
+    as: 'detallesPedido',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 DetallePedido.belongsTo(Pedido, {
-    foreignKey: 'pedidoId', // Campo que conecta las tablas 
-    as: 'pedido', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un pedido, se elimina detallePedido
-    onUpdate: 'CASCADE', // Si se actualiza pedido actualizar el detallePedido
+    foreignKey: 'pedidoId',
+    as: 'pedido',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Producto - DetallePedido
  * Un Producto puede estar en muchos detallesPedido
- * Un DetallePedido pertence a un Producto
+ * Un DetallePedido pertenece a un Producto
  */
 Producto.hasMany(DetallePedido, {
-    foreignKey: 'productoId', // Campo que conecta las tablas 
-    as: 'detallesPedido', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un producto, se elimina detallePedido
-    onUpdate: 'CASCADE', // Si se actualiza producto actualizar detallesPedido
+    foreignKey: 'productoId',
+    as: 'detallesPedido',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 DetallePedido.belongsTo(Producto, {
-    foreignKey: 'productoId', // Campo que conecta las tablas 
-    as: 'producto', // ALias para la relacion
-    onDelete: 'CASCADE', // Si se elimina un producto, se elimina detallePedido
-    onUpdate: 'CASCADE', // Si se actualiza producto actualizar el detallePedido
+    foreignKey: 'productoId',
+    as: 'producto',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
 });
 
 /**
  * Relaciones muchos a muchos
- * pedido y producto tiene una relación de muchos a muchos a través de detalle pedido
+ * Pedido y Producto tienen una relación de muchos a muchos a través de DetallePedido
  */
-
 Pedido.belongsToMany(Producto, {
-    through: DetallePedido, // Tabla intermedia
-    foreignKey: 'pedidoId', // FK en la tabla intermedia
-    otherKey: 'productoId', // FK del otro lado
-    as: 'productos', // Alias para la relación
+    through: DetallePedido,
+    foreignKey: 'pedidoId',
+    otherKey: 'productoId',
+    as: 'productos',
 });
 
 Producto.belongsToMany(Pedido, {
-    through: DetallePedido, // Tabla intermedia
-    foreignKey: 'productoId', // FK en la tabla intermedia
-    otherKey: 'pedidoId', // FK del otro lado
-    as: 'pedidos', // Alias para la relación
+    through: DetallePedido,
+    foreignKey: 'productoId',
+    otherKey: 'pedidoId',
+    as: 'pedidos',
 });
 
 /**
- * Exportar funciones de inicialización
- * Funcio para inicializar todas las asociaciones
- * Se llama desde server.js después de cargar los modelos
+ * ✅ CORRECCIÓN PRINCIPAL: Exportar todos los modelos
+ * para poder usarlos en otras partes de la aplicación
  */
 module.exports = {
     Usuario,
     Categoria,
+    Carrito,
     SubCategoria,
     Producto,
-    Carrito,
-    Pedido,
     DetallePedido,
-    initializeAssociations
+    Pedido,
+    // Si creas el modelo intermedio:
+    // CarritoProducto
 };
 

@@ -20,7 +20,7 @@ const { group } = require('node:console');
  * POST /api/cliente/pedidos
  */
 const crearPedido = async (req, res) => {
-    const { sequelize } = require('../config/dataBase');
+    const { sequelize } = require('../config/dataBase.cjs');
     const t = await sequelize.transaction();
 
     try {
@@ -241,7 +241,7 @@ const obtenerPedidos = async (req, res) => {
  * GET / api/cliente/pedidos/:id
  * Solo puede ver sus pedidos admin todos
  */
-const obtenerPedidoPorId = async (res, res) => {
+const obtenerPedidoPorId = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -312,8 +312,8 @@ const obtenerPedidoPorId = async (res, res) => {
  * devuelve el stock a los productos
  */
 const cancelarPedido = async (req, res) => {
-    const { sequelize } = require("../config/dataBase");
-    const t = await sequelize.transaction();
+    const { Sequelize } = require("../config/dataBase.cjs");
+    const t = await Sequelize.transaction();
     try {
         const { id } = req.params;
 

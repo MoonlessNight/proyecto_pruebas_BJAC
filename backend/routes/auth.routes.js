@@ -8,14 +8,14 @@
 const express = require('express');
 const router = express.Router();
 
-const [
-    registrarse,
-    iniciar_Sesion,
-    obtenerme,
-    actualizarme,
-    cambiarContrasenas
+const {
+    registrarUsuario,
+    iniciarSesion,
+    obtenerPerfil,
+    actualizarPerfil,
+    cambiarContrasena
 
-] = require('../controllers/auth.controller');
+} = require('../controllers/auth.controller');
 
 const {verificarToken} = require('../middleware/auth');
 
@@ -23,14 +23,14 @@ const {verificarToken} = require('../middleware/auth');
  * RUTAS PUBLICAS
  */
 
-router.post('/register', registrarse);
-router.post('/login', iniciar_Sesion);
+router.post('/register', registrarUsuario);
+router.post('/login', iniciarSesion);
 
 /**
  * RUTAS PRIVADAS
  */
-router.get('/me', verificarToken, obtenerme);
-router.put('/me', verificarToken, actualizarme);
-router.patch('/me/password', verificarToken, cambiarContrasenas);
+router.get('/me', verificarToken, obtenerPerfil);
+router.put('/me', verificarToken, actualizarPerfil);
+router.patch('/me/password', verificarToken, cambiarContrasena);
 
 module.exports = router;

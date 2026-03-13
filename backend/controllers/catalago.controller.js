@@ -10,7 +10,7 @@
 const SubCategoria = require('../models/subCategoria.js');
 const Categoria = require('../models/categoria.js');
 const Producto = require('../models/producto.js');
-const { Op } = require('sequelize');
+const { Op } = require('../config/dataBase.cjs');
 
 /**
  *  IMPORTAR PATH Y FS PARA MANEJAR ARCHIVOS

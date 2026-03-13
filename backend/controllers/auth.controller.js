@@ -5,34 +5,32 @@
  */
 
 // ==================================== IMPORTAR MODELOS ===================================
-const Usuario = require('../models/usuario');
-const bcrypt = require('../config/bcrypt');
-const jwt = require('../config/jws');
-const { Cipheriv } = require('node:crypto');
+const Usuario = require('../models/usuario')
+const generarToken = require('../config/jws').generarToken;
+
 
 const registrarUsuario = async (req, res) => {
     try {
-        const { nombre, apellido, email, password, rol, telefono, direccion } = req.body;
+        const { nombre, email, password, telefono, direccion } = req.body;
 
-        // Validación 1 — Verficair que todos los campos requeridos esten presentes
-        if (!nombre || !apellido || !email || !password || !rol) {
+        // Validar campos obligatorios
+        if (!nombre || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Todos los campos son requeridos: nombre, apellido, email, password, rol.'
+                message: 'Los campos nombre, email y password son requeridos.'
             });
         }
 
-        // Validación 2 — Verificar el formato del email
+        // Validar formato de email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)){
+        if (!emailRegex.test(email)) {
             return res.status(400).json({
                 success: false,
-                message: "El formato del email invalida."
-
+                message: "El formato del email es inválido."
             });
         }
 
-        // Verificar 3 — Verificar la longitud de la contraseña
+        // Validar longitud de contraseña
         if (password.length < 8) {
             return res.status(400).json({
                 success: false,
@@ -40,7 +38,7 @@ const registrarUsuario = async (req, res) => {
             });
         }
 
-        // Verificar 4 — Verificar que el email no este registrado
+        // Verificar email duplicado
         const usuarioExistente = await Usuario.findOne({ where: { email } });
         if (usuarioExistente) {
             return res.status(400).json({
@@ -49,132 +47,106 @@ const registrarUsuario = async (req, res) => {
             });
         }
 
+        // Crear usuario (siempre como cliente por defecto)
+        const nuevoUsuario = await Usuario.create({
+            nombre,
+            email,
+            password,
+            telefono: telefono || null,
+            direccion: direccion || null,
+            rol: 'cliente' // Forzamos cliente por defecto
+        });
+
+        const token = generarToken({
+            id: nuevoUsuario.id,
+            nombre: nuevoUsuario.nombre,
+            rol: nuevoUsuario.rol
+        });
+
+        const usuarioRespuesta = nuevoUsuario.toJSON();
+        delete usuarioRespuesta.password;
+
         res.status(201).json({
             success: true,
-            message: 'Usuario creado exitosamente.',
+            message: 'Usuario creado exitosamente',
             data: {
-                usuario: nuevoUsuario.toJSON()
+                usuario: usuarioRespuesta,
+                token
             }
         });
+
     } catch (error) {
         console.error('Error en registrarUsuario: ', error);
-        if (error.name == 'SequelizeValidationError') {
+        if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({
                 success: false,
-                message: 'Error de validacion',  
+                message: 'Error de validación',
                 error: error.errors.map(e => e.message)
             });
         }
-
         res.status(500).json({
             success: false,
             message: 'Error al crear el usuario',
             error: error.message,
         });
     }
-
-    }
-
-/**
- * CREAR USUARIO
- * ==========================================================
- * El hook beforeCreate en el modelo se encagar de hashear la contraseña antes de guardarla
- * 
- */
-const nuevoUsuario = await Usuario.create({
-    nombre,
-    apellido,
-    email,
-    password,
-    telefono: telefono || null,
-    direccion: direccion || null,
-    rol: 'cliente'
-});
-
-const token = generarToken ({
-    id: nuevoUsuario.id,
-    nombre: nuevoUsuario.nombre,
-    rol: nuevoUsuario.rol
-
-})
-
-const usuarioRespuesta = nuevoUsuario.toJSON();
-delete usuarioRespuesta.password;
-res.status(201).json({
-    success: true,
-    message: 'Usuario creado exitosamente',
-    data: {
-        usuario: usuarioRespuesta,
-        token
-    }
-})
+};
 
 /**
  * INICIAR SESION
  * =========================================
  * Autenticar un usuario con email y contraseña
- * Retoma el usuario y un tokem JWT si las credenciales son correctas
+ * Retoma el usuario y un token JWT si las credenciales son correctas
  * 
- * POST/ api/auth/login
+ * POST /api/auth/login
  * body: {email, password}
  */
 const iniciarSesion = async (req, res) => {
     try {
-        const {email, password} = req.body;
+        const { email, password } = req.body;
 
-        // Validación 1 — Veririficar que se proporcionan email y password
         if (!email || !password) {
-            return res.status(400).json ({
+            return res.status(400).json({
                 success: false,
                 message: 'Todos los campos son requeridos: email, password.'
-
-            })
+            });
         }
 
-        // Validación 2 — Buscar usuario por email
-        // Necesitamos incluir el password aqui normalmente  se exluye por seguridad
-        const usuario = await Usuario.findOne({
-            where: {email},
+        const usuario = await Usuario.scope('withPassword').findOne({
+            where: { email },
         });
 
+        
         if (!usuario) {
             return res.status(401).json({
                 success: false,
-                message: 'Credenciales invalidas'
+                message: 'Credenciales inválidas'
             });
         }
 
-        // Validación 3 — Verificar que el usuario este activo
         if (!usuario.activo) {
             return res.status(401).json({
                 success: false,
-                message: 'El usuario no esta activo'
+                message: 'El usuario no está activo'
             });
         }
 
-        // Validación 4 — Verificar la contraseña
-        // Usamos el método compararContraseñas del modelo usuario
-        const validarContrasena = await usuario.compararContraseña(password);
-
+        const validarContrasena = await usuario.compararPassword(password);
         if (!validarContrasena) {
             return res.status(401).json({
                 success: false,
-                message: 'Credenciales invalidas'
+                message: 'Credenciales inválidas'
             });
         }
 
-        // Generar token JWT con datos básicos del usuario
         const token = generarToken({
             id: usuario.id,
             nombre: usuario.nombre,
             rol: usuario.rol
         });
 
-        // Prepara respuesta si contraseña
         const usuarioSinContrasena = usuario.toJSON();
         delete usuarioSinContrasena.password;
-
-        // Respuesta
 
         res.json({
             success: true,
@@ -185,35 +157,31 @@ const iniciarSesion = async (req, res) => {
             }
         });
 
-    }catch(error){
-        res.json({
+    } catch (error) {
+        console.error('Error en iniciarSesion:', error);
+        res.status(500).json({
             success: false,
             message: 'Error al iniciar sesión',
             error: error.message
         });
-    
-    
     }
-
 };
 
 /**
  * OBTENER PERFIL DEL USUARIO
  * ===========================================
- * Requiere middleware verficarAuth
- * GET  /api/auth/me
+ * Requiere middleware verificarAuth
+ * GET /api/auth/me
  * Headers: {Authorization}
- * 
  */
 const obtenerPerfil = async (req, res) => {
     try {
-        // El usuario ya esta en req.usuario 
         const usuario = await Usuario.findByPk(req.usuario.id, {
             attributes: {
                 exclude: ['password']
-            }});
+            }
+        });
 
-            
         if (!usuario) {
             return res.status(404).json({
                 success: false,
@@ -221,7 +189,6 @@ const obtenerPerfil = async (req, res) => {
             });
         }
 
-        // Respuesta exitosa
         res.json({
             success: true,
             data: {
@@ -229,7 +196,7 @@ const obtenerPerfil = async (req, res) => {
             }
         });
 
-    }catch(error){
+    } catch (error) {
         console.error('Error en obtenerPerfil: ', error);
         res.status(500).json({
             success: false,
@@ -237,7 +204,6 @@ const obtenerPerfil = async (req, res) => {
             error: error.message
         });
     }
-
 };
 
 /**
@@ -245,26 +211,21 @@ const obtenerPerfil = async (req, res) => {
  * ========================================================
  * Permite al usuario actualizar su información personal 
  * PUT /api/auth/me
- * @param {Object} req
- * @param {Object} res
  */
-
 const actualizarPerfil = async (req, res) => {
     try {
-        const { nombre, apellido, email, password, telefono, direccion } = req.body;
+        const { nombre, email, password, telefono, direccion } = req.body;
 
-        // Buscar usuario
         const usuario = await Usuario.findByPk(req.usuario.id);
         if (!usuario) {
-            res.json({
+            return res.status(404).json({
                 success: false,
                 message: 'Usuario no encontrado'
             });
         }
-        
-        // Actualizar capos
+
         if (nombre !== undefined) usuario.nombre = nombre;
-        if (apellido !== undefined) usuario.apellido = apellido;
+
         if (email !== undefined) usuario.email = email;
         if (password !== undefined) usuario.password = password;
         if (telefono !== undefined) usuario.telefono = telefono;
@@ -272,7 +233,6 @@ const actualizarPerfil = async (req, res) => {
 
         await usuario.save();
 
-        // Respuesta exitosa
         res.json({
             success: true,
             message: 'Perfil actualizado exitosamente',
@@ -280,6 +240,7 @@ const actualizarPerfil = async (req, res) => {
                 usuario: usuario.toJSON()
             }
         });
+
     } catch (error) {
         console.error('Error en actualizarPerfil: ', error);
         return res.status(500).json({
@@ -299,62 +260,62 @@ const actualizarPerfil = async (req, res) => {
  */
 const cambiarContrasena = async (req, res) => {
     try {
-        const { contrasenaActual, contrasenaNueva} = req.body;
+        const { contrasenaActual, contrasenaNueva } = req.body;
 
-        // Validación 1 — Verificar que se proporcionaron ambas contraseña
         if (!contrasenaActual || !contrasenaNueva) {
             return res.status(400).json({
                 success: false,
                 message: 'Todos los campos son requeridos: contrasenaActual, contrasenaNueva'
-         })}
+            });
+        }
 
-        // Validacion 2 — Verificar que se proporcionaron ambos contraseñas
-        if (contrasenaNueva.length < 6)  {
+        if (contrasenaNueva.length < 6) {
             return res.status(400).json({
                 success: false,
-                message: ' La contraseña nueva debe tener al menos 6 caracteres'
-        })}
+                message: 'La contraseña nueva debe tener al menos 6 caracteres'
+            });
+        }
 
-        // Validacion 3 — Buscar usuario con contraseña incluido
         const usuario = await Usuario.findByPk(req.usuario.id);
         if (!usuario) {
-            return res.status(400).json({
+            return res.status(404).json({
                 success: false,
                 message: 'Usuario no encontrado'
-            });}
+            });
+        }
 
-        // Validacion 4 — Validar que la contraseña actual sea correcta
-        const contrasenaValida = await usuario.compararContraseña(contrasenaActual);
+        const contrasenaValida = await usuario.compararPassword(contrasenaActual);
         if (!contrasenaValida) {
             return res.status(400).json({
                 success: false,
-                message: 'Usuario actual incorrecta'
-            });}
-            
-        // Actualizar contraseña
+                message: 'Contraseña actual incorrecta'
+            });
+        }
+
         usuario.password = contrasenaNueva;
         await usuario.save();
 
-        // Respuesta
         res.json({
             success: true,
             message: 'Contraseña actualizada exitosamente'
         });
 
-    } catch (error) {   
+    } catch (error) {
         console.error('Error en cambiarContrasena: ', error);
         return res.status(500).json({
             success: false,
             message: 'Error al cambiar contraseña',
             error: error.message
         });
-    }}
+    }
+};
 
+// Función auxiliar para generar token (asumiendo que está definida en jwt.js)
 
 module.exports = {
     registrarUsuario,
     iniciarSesion,
     obtenerPerfil,
     actualizarPerfil,
-    cambiarContrasena   
-}
+    cambiarContrasena
+};
